@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 投票セルのスタイル */
+.vote-cell {
+  @apply w-10 h-10 flex items-center justify-center border border-border rounded cursor-pointer transition-colors;
+}
+
+.vote-cell[data-availability="available"] {
+  @apply bg-success text-white;
+}
+
+.vote-cell[data-availability="maybe"] {
+  @apply bg-warning text-white;
+}
+
+.vote-cell[data-availability="unavailable"] {
+  @apply bg-gray-200 text-gray-500;
+}
