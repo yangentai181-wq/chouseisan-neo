@@ -54,11 +54,20 @@ function getInitialState(
       const restoredVotes: Record<string, Availability> = {};
       const restoredPrefs: Record<string, number | null> = {};
       existingVote.vote_details.forEach((d) => {
+        // 無効なIDをスキップ
+        if (
+          !d.candidate_id ||
+          d.candidate_id === "undefined" ||
+          d.candidate_id === "null"
+        )
+          return;
         restoredVotes[d.candidate_id] = d.availability;
         restoredPrefs[d.candidate_id] = d.preference ?? null;
       });
       // 全候補日を含める
       candidates.forEach((c) => {
+        // 無効なIDをスキップ
+        if (!c.id || c.id === "undefined" || c.id === "null") return;
         if (!(c.id in restoredVotes)) {
           restoredVotes[c.id] = defaultValue;
           restoredPrefs[c.id] = null;
@@ -72,6 +81,8 @@ function getInitialState(
   const initialVotes: Record<string, Availability> = {};
   const initialPrefs: Record<string, number | null> = {};
   candidates.forEach((c) => {
+    // 無効なIDをスキップ
+    if (!c.id || c.id === "undefined" || c.id === "null") return;
     initialVotes[c.id] = defaultValue;
     initialPrefs[c.id] = null;
   });
@@ -160,20 +171,25 @@ export function VotingForm({
     setLoading(true);
 
     try {
-      const voteData = Object.entries(currentVotes).map(
-        ([candidate_id, availability]) => ({
+      const voteData = Object.entries(currentVotes)
+        .filter(
+          ([candidate_id]) =>
+            candidate_id &&
+            candidate_id !== "undefined" &&
+            candidate_id !== "null",
+        )
+        .map(([candidate_id, availability]) => ({
           candidate_id,
           availability,
           preference: currentPreferences[candidate_id] ?? null,
-        }),
-      );
+        }));
 
       const res = await fetch(`/api/events/${eventId}/votes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           participant_name: name.trim(),
-          participant_token: participantToken,
+          participant_token: participantToken ?? undefined,
           votes: voteData,
         }),
       });
