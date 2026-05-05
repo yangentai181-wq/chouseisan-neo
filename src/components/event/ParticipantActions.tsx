@@ -118,19 +118,6 @@ export function ParticipantActions({
           >
             結果を見る
           </Link>
-
-          {/* 管理者画面 */}
-          <Link
-            href={`/e/${eventId}/manage`}
-            className={`py-3 px-3 rounded-lg text-sm transition-all border active:scale-98 ${
-              localAdminMode
-                ? "bg-admin-bg text-admin-muted border-admin-border hover:bg-admin-card-bg hover:text-admin-foreground"
-                : "bg-background text-muted border-border hover:bg-border hover:text-foreground"
-            }`}
-            title="管理者画面"
-          >
-            ⚙
-          </Link>
         </div>
       </div>
     </div>
