@@ -8,6 +8,7 @@ export interface Event {
   description: string | null;
   mode: EventMode;
   duration_minutes: number | null;
+  response_deadline: string | null; // ISO date string (YYYY-MM-DD)
   status: "open" | "finalized";
   finalized_candidate_id: string | null;
   created_at: string;

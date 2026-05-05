@@ -22,7 +22,7 @@ export async function generateMetadata({
     .single();
 
   if (!event) {
-    return { title: "イベントが見つかりません" };
+    return { title: "ページが見つかりません" };
   }
 
   return {
@@ -43,7 +43,7 @@ export default async function EventPage({ params }: EventPageProps) {
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select(
-      "id, title, description, mode, duration_minutes, status, finalized_candidate_id, created_at, updated_at",
+      "id, title, description, mode, duration_minutes, response_deadline, status, finalized_candidate_id, created_at, updated_at",
     )
     .eq("id", eventId)
     .single();
@@ -86,7 +86,7 @@ export default async function EventPage({ params }: EventPageProps) {
     <main className="flex-1 flex flex-col items-center p-4">
       <div className="w-full max-w-4xl">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             {event.title}
           </h1>
           {event.description && (
@@ -94,7 +94,7 @@ export default async function EventPage({ params }: EventPageProps) {
           )}
         </header>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">日程調整</h2>
           <VotingForm
             eventId={eventId}
@@ -105,12 +105,13 @@ export default async function EventPage({ params }: EventPageProps) {
           />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6">
           <h2 className="text-lg font-semibold mb-4">共有</h2>
           <ShareButtons
             url={shareUrl}
             title={event.title}
             candidates={candidates || []}
+            responseDeadline={event.response_deadline}
           />
         </div>
 
@@ -122,7 +123,7 @@ export default async function EventPage({ params }: EventPageProps) {
             結果を見る
           </Link>
           <Link href="/" className="text-primary hover:underline text-sm">
-            新しいイベントを作成
+            新規作成
           </Link>
         </footer>
       </div>

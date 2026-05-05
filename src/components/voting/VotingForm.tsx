@@ -196,7 +196,7 @@ export function VotingForm({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "投票に失敗しました");
+        throw new Error(data.error || "回答の送信に失敗しました");
       }
 
       const data = await res.json();
@@ -248,8 +248,8 @@ export function VotingForm({
             isEditing={true}
           />
           <div className="text-sm text-muted">
-            <p>○ = 参加可能 / △ = 微妙 / × = 参加不可</p>
-            <p>セルをクリックして切り替えてください</p>
+            <p>○ = 参加可 / △ = 調整可能 / × = 参加不可</p>
+            <p>セルをタップして切り替え</p>
           </div>
         </>
       )}
@@ -267,7 +267,7 @@ export function VotingForm({
           />
         </div>
         <Button type="submit" loading={loading}>
-          {participantToken ? "投票を更新" : "投票する"}
+          {participantToken ? "回答を更新" : "回答する"}
         </Button>
       </div>
     </form>

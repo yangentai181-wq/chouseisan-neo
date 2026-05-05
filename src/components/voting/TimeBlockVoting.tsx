@@ -9,9 +9,26 @@ interface TimeBlockVotingProps {
   onVoteChange: (candidateId: string, availability: Availability) => void;
 }
 
+const WEEKDAY_DATES = [
+  "2000-01-02",
+  "2000-01-03",
+  "2000-01-04",
+  "2000-01-05",
+  "2000-01-06",
+  "2000-01-07",
+  "2000-01-08",
+];
+
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // 定期開催モードの曜日日付かどうかをチェック
+  if (WEEKDAY_DATES.includes(dateStr)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(dateStr);
+    return `${weekdays[dayIndex]}曜日`;
+  }
+
+  const date = new Date(dateStr);
   const month = date.getMonth() + 1;
   const day = date.getDate();
   const weekday = weekdays[date.getDay()];
@@ -102,15 +119,15 @@ export function TimeBlockVoting({
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div className="text-sm text-muted">
-          <p>来れない時間帯をタップしてください</p>
+          <p>都合のつかない時間帯を選択してください</p>
           <div className="flex gap-4 mt-2">
             <span className="flex items-center gap-2">
-              <span className="w-4 h-4 bg-gray-100 rounded border border-gray-200" />
-              空き
+              <span className="w-4 h-4 bg-background rounded border border-border" />
+              参加可
             </span>
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 bg-gray-800 rounded" />
-              来れない
+              参加不可
             </span>
           </div>
         </div>
@@ -134,9 +151,11 @@ export function TimeBlockVoting({
         const afternoonStatus = getStatus(afternoonCandidates);
 
         return (
-          <div key={date} className="bg-gray-50 rounded-lg p-4">
+          <div key={date} className="bg-background rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-900">{formatDate(date)}</h3>
+              <h3 className="font-medium text-foreground">
+                {formatDate(date)}
+              </h3>
               <div className="flex gap-1">
                 {morningCandidates.length > 0 && (
                   <button
@@ -150,7 +169,7 @@ export function TimeBlockVoting({
                     className={`text-xs px-2 py-1 rounded transition-all ${
                       morningStatus === "all"
                         ? "bg-gray-800 text-white"
-                        : "bg-white border border-gray-300 hover:bg-gray-100"
+                        : "bg-white border border-border hover:bg-background"
                     }`}
                   >
                     午前×
@@ -168,7 +187,7 @@ export function TimeBlockVoting({
                     className={`text-xs px-2 py-1 rounded transition-all ${
                       afternoonStatus === "all"
                         ? "bg-gray-800 text-white"
-                        : "bg-white border border-gray-300 hover:bg-gray-100"
+                        : "bg-white border border-border hover:bg-background"
                     }`}
                   >
                     午後×
@@ -182,7 +201,7 @@ export function TimeBlockVoting({
                   className={`text-xs px-2 py-1 rounded transition-all ${
                     allStatus === "all"
                       ? "bg-gray-800 text-white"
-                      : "bg-white border border-gray-300 hover:bg-gray-100"
+                      : "bg-white border border-border hover:bg-background"
                   }`}
                 >
                   終日×
@@ -201,7 +220,7 @@ export function TimeBlockVoting({
                     className={`w-full p-3 rounded-lg text-left transition-all ${
                       isUnavailable
                         ? "bg-gray-800 text-white"
-                        : "bg-white border border-gray-200 hover:border-gray-300"
+                        : "bg-white border border-border hover:border-border"
                     }`}
                   >
                     <span className="font-medium">
@@ -212,7 +231,7 @@ export function TimeBlockVoting({
                     </span>
                     {isUnavailable && (
                       <span className="ml-2 text-sm opacity-75">
-                        × 来れない
+                        × 参加不可
                       </span>
                     )}
                   </button>

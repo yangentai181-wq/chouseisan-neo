@@ -15,8 +15,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, mode, duration_minutes, candidates } =
-      parsed.data;
+    const {
+      title,
+      description,
+      mode,
+      duration_minutes,
+      response_deadline,
+      candidates,
+    } = parsed.data;
     const supabase = await createClient();
 
     const eventId = generateEventId();
@@ -30,6 +36,7 @@ export async function POST(request: NextRequest) {
       description: description || null,
       mode: mode || "event",
       duration_minutes: duration_minutes || null,
+      response_deadline: response_deadline || null,
     });
 
     if (eventError) {

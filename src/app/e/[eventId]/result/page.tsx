@@ -4,13 +4,42 @@ import { createClient } from "@/lib/supabase/server";
 import { VotingGrid } from "@/components/voting";
 import { CalendarLinks } from "@/components/calendar";
 import { ShareButtons } from "@/components/share";
+import { ManageLink } from "@/components/event/ManageLink";
 import type { Candidate, VoteWithDetails, EventMode } from "@/types";
 
 interface ResultPageProps {
   params: Promise<{ eventId: string }>;
 }
 
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const WEEKDAY_DATES = [
+  "2000-01-02",
+  "2000-01-03",
+  "2000-01-04",
+  "2000-01-05",
+  "2000-01-06",
+  "2000-01-07",
+  "2000-01-08",
+];
+
+function isWeekdayDate(date: string): boolean {
+  return WEEKDAY_DATES.includes(date);
+}
+
 function formatCandidate(c: Candidate): string {
+  // 定期開催モードの曜日日付かどうかをチェック
+  if (isWeekdayDate(c.date)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(c.date);
+    const weekdayStr = `${WEEKDAYS[dayIndex]}曜日`;
+    if (c.start_time && c.end_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜${c.end_time.slice(0, 5)}`;
+    }
+    if (c.start_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜`;
+    }
+    return weekdayStr;
+  }
+
   const date = new Date(c.date);
   const dateStr = date.toLocaleDateString("ja-JP", {
     year: "numeric",
@@ -204,7 +233,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
     <main className="flex-1 flex flex-col items-center p-4">
       <div className="w-full max-w-4xl">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             {event.title}
           </h1>
           {event.description && (
@@ -212,10 +241,10 @@ export default async function ResultPage({ params }: ResultPageProps) {
           )}
           <p className="text-sm text-muted mt-1">
             {mode === "meeting"
-              ? "全員集合モード"
+              ? "全員参加モード"
               : mode === "regular"
-                ? "定例モード"
-                : "イベントモード"}
+                ? "定期開催モード"
+                : "多数決モード"}
           </p>
         </header>
 
@@ -298,16 +327,6 @@ export default async function ResultPage({ params }: ResultPageProps) {
                           第3希望: {ranking.thirdChoiceCount}
                         </span>
                       </div>
-                      {index === 0 && (
-                        <div className="mt-3">
-                          <CalendarLinks
-                            eventId={eventId}
-                            eventTitle={event.title}
-                            eventDescription={event.description}
-                            candidate={ranking.candidate}
-                          />
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -342,19 +361,23 @@ export default async function ResultPage({ params }: ResultPageProps) {
           )
         )}
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">
-            {mode === "meeting" ? "回答一覧" : "投票結果"}
-          </h2>
+        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">回答一覧</h2>
+            <ManageLink eventId={eventId} />
+          </div>
           <VotingGrid candidates={candidateList} votes={voteList} />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">共有</h2>
           <ShareButtons
             url={shareUrl}
             title={event.title}
             candidates={candidateList}
+            finalizedCandidate={
+              event.status === "finalized" ? selectedCandidate : null
+            }
           />
         </div>
 
@@ -363,10 +386,10 @@ export default async function ResultPage({ params }: ResultPageProps) {
             href={`/e/${eventId}`}
             className="text-primary hover:underline text-sm"
           >
-            投票ページに戻る
+            回答ページに戻る
           </Link>
           <Link href="/" className="text-primary hover:underline text-sm">
-            新しいイベントを作成
+            新規作成
           </Link>
         </footer>
       </div>

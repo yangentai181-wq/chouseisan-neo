@@ -30,6 +30,10 @@ export const createEventSchema = z.object({
     .min(15, "所要時間は15分以上で設定してください")
     .max(480, "所要時間は8時間以内で設定してください")
     .optional(),
+  response_deadline: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式が不正です")
+    .optional(),
   candidates: z
     .array(candidateSchema)
     .min(1, "候補日を1つ以上設定してください"),

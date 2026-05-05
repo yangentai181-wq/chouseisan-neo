@@ -16,7 +16,35 @@ const symbols: Record<Availability, string> = {
   unavailable: "×",
 };
 
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+const WEEKDAY_DATES = [
+  "2000-01-02",
+  "2000-01-03",
+  "2000-01-04",
+  "2000-01-05",
+  "2000-01-06",
+  "2000-01-07",
+  "2000-01-08",
+];
+
+function isWeekdayDate(date: string): boolean {
+  return WEEKDAY_DATES.includes(date);
+}
+
 function formatCandidate(c: Candidate): string {
+  // 定期開催モードの曜日日付かどうかをチェック
+  if (isWeekdayDate(c.date)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(c.date);
+    const weekdayStr = `${WEEKDAYS[dayIndex]}曜`;
+    if (c.start_time && c.end_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜${c.end_time.slice(0, 5)}`;
+    }
+    if (c.start_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜`;
+    }
+    return weekdayStr;
+  }
+
   const date = new Date(c.date);
   const dateStr = date.toLocaleDateString("ja-JP", {
     month: "numeric",
@@ -62,13 +90,13 @@ export function VotingGrid({
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="p-2 border border-border bg-gray-50 text-left min-w-[150px]">
+            <th className="p-2 border border-border bg-background text-left min-w-[150px]">
               日程
             </th>
             {votes.map((vote) => (
               <th
                 key={vote.id}
-                className="p-2 border border-border bg-gray-50 text-center min-w-[60px]"
+                className="p-2 border border-border bg-background text-center min-w-[60px]"
               >
                 {vote.participant_name}
               </th>
@@ -78,7 +106,7 @@ export function VotingGrid({
                 あなた
               </th>
             )}
-            <th className="p-2 border border-border bg-gray-50 text-center min-w-[80px]">
+            <th className="p-2 border border-border bg-background text-center min-w-[80px]">
               集計
             </th>
           </tr>
@@ -107,7 +135,7 @@ export function VotingGrid({
                             ? "bg-success text-white"
                             : availability === "maybe"
                               ? "bg-warning text-white"
-                              : "bg-gray-200 text-gray-500"
+                              : "bg-border text-muted"
                         }`}
                       >
                         {symbols[availability]}
@@ -125,7 +153,7 @@ export function VotingGrid({
                           ? "bg-success text-white"
                           : currentVotes[candidate.id] === "maybe"
                             ? "bg-warning text-white"
-                            : "bg-gray-200 text-gray-500"
+                            : "bg-border text-muted"
                       }`}
                     >
                       {symbols[currentVotes[candidate.id] || "unavailable"]}

@@ -12,11 +12,37 @@ interface ShareMessageEditorProps {
   onClose: () => void;
 }
 
+const WEEKDAY_DATES = [
+  "2000-01-02",
+  "2000-01-03",
+  "2000-01-04",
+  "2000-01-05",
+  "2000-01-06",
+  "2000-01-07",
+  "2000-01-08",
+];
+
 function formatCandidateForShare(c: Candidate): string {
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // 定期開催モードの曜日日付かどうかをチェック
+  if (WEEKDAY_DATES.includes(c.date)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(c.date);
+    let result = `${weekdays[dayIndex]}曜日`;
+    if (c.start_time) {
+      result += ` ${c.start_time.slice(0, 5)}`;
+      if (c.end_time) {
+        result += `〜${c.end_time.slice(0, 5)}`;
+      } else {
+        result += "〜";
+      }
+    }
+    return result;
+  }
+
   const date = new Date(c.date);
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
   const weekday = weekdays[date.getDay()];
 
   let result = `${month}/${day}(${weekday})`;
@@ -45,10 +71,10 @@ function generateDefaultMessage(
 
   return `${title}の日程調整
 
-以下の候補から都合の良い日を選んでください！
+以下の候補からご都合のよい日程をお選びください。
 ${candidateList}${moreText}
 
-▼ 回答はこちら`;
+▼ ご回答はこちら`;
 }
 
 export function ShareMessageEditor({
@@ -108,7 +134,7 @@ export function ShareMessageEditor({
             <h2 className="text-lg font-semibold">共有メッセージを編集</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              className="text-muted hover:text-foreground text-2xl leading-none"
               aria-label="閉じる"
             >
               ×
@@ -127,7 +153,7 @@ export function ShareMessageEditor({
           </p>
 
           {/* プレビュー */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <div className="bg-background rounded-lg p-4 mb-4">
             <p className="text-xs text-muted mb-2">プレビュー</p>
             <div className="whitespace-pre-wrap text-sm">
               {message}
