@@ -1,30 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui";
+import { Button, Textarea } from "@/components/ui";
+import { generateShareMessage } from "@/lib/share/message";
+import type { Candidate } from "@/types";
+
+interface EventData {
+  title: string;
+  response_deadline?: string | null;
+  candidates: Candidate[];
+}
+
+// localStorageからホストトークンを取得するヘルパー（SSR対応）
+function getInitialHostToken(eventId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(`host_token_${eventId}`);
+}
 
 export default function CreatedPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.eventId as string;
 
-  const [hostToken, setHostToken] = useState<string | null>(null);
-  const [shareUrlCopied, setShareUrlCopied] = useState(false);
+  // 初期値をlocalStorageから取得（SSR時はnull）
+  const initialToken = useMemo(() => getInitialHostToken(eventId), [eventId]);
+  const [hostToken, setHostToken] = useState<string | null>(initialToken);
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [shareMessageCopied, setShareMessageCopied] = useState(false);
   const [manageUrlCopied, setManageUrlCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editedMessage, setEditedMessage] = useState("");
 
+  // クライアントサイドでトークンを再確認＆イベントデータ取得
   useEffect(() => {
     const token = localStorage.getItem(`host_token_${eventId}`);
     if (!token) {
-      // トークンがない場合はイベントページへ
       router.replace(`/e/${eventId}`);
       return;
     }
-    setHostToken(token);
-  }, [eventId, router]);
+    // SSR時にnullだった場合のみ更新
+    if (!hostToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration
+      setHostToken(token);
+    }
 
-  if (!hostToken) {
+    // イベントデータを取得
+    fetch(`/api/events/${eventId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setEventData({
+          title: data.title || "",
+          response_deadline: data.response_deadline,
+          candidates: data.candidates || [],
+        });
+      })
+      .catch(() => {});
+  }, [eventId, router, hostToken]);
+
+  if (!hostToken || !eventData) {
     return (
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="text-muted">読み込み中...</div>
@@ -39,11 +74,21 @@ export default function CreatedPage() {
   const shareUrl = `${baseUrl}/e/${eventId}`;
   const manageUrl = `${baseUrl}/e/${eventId}/manage?token=${hostToken}`;
 
-  const handleCopyShareUrl = async () => {
+  const defaultMessage = generateShareMessage({
+    title: eventData.title,
+    url: shareUrl,
+    candidates: eventData.candidates,
+    responseDeadline: eventData.response_deadline,
+  });
+
+  // 編集されたメッセージがあればそれを、なければデフォルトを使用
+  const shareMessage = editedMessage || defaultMessage;
+
+  const handleCopyShareMessage = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareUrlCopied(true);
-      setTimeout(() => setShareUrlCopied(false), 2000);
+      await navigator.clipboard.writeText(shareMessage);
+      setShareMessageCopied(true);
+      setTimeout(() => setShareMessageCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -57,6 +102,15 @@ export default function CreatedPage() {
     } catch (err) {
       console.error("Failed to copy:", err);
     }
+  };
+
+  const handleStartEdit = () => {
+    setEditedMessage(shareMessage);
+    setEditing(true);
+  };
+
+  const handleReset = () => {
+    setEditedMessage("");
   };
 
   return (
@@ -84,19 +138,48 @@ export default function CreatedPage() {
           <p className="text-muted">以下のURLを参加者に共有してください</p>
         </div>
 
-        {/* 共有URL */}
+        {/* 共有メッセージ */}
         <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-4">
-          <h2 className="text-sm font-semibold text-foreground mb-2">
-            参加者用URL
-          </h2>
-          <p className="text-xs text-muted mb-3">
-            このURLを参加者に送って、日程を入力してもらいましょう
-          </p>
-          <div className="bg-background rounded-lg p-3 mb-3 break-all text-sm">
-            {shareUrl}
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              共有メッセージ
+            </h2>
+            <div className="flex gap-2">
+              {editing && editedMessage && editedMessage !== defaultMessage && (
+                <button
+                  onClick={handleReset}
+                  className="text-xs text-muted hover:text-foreground"
+                >
+                  リセット
+                </button>
+              )}
+              <button
+                onClick={() =>
+                  editing ? setEditing(false) : handleStartEdit()
+                }
+                className="text-xs text-primary hover:underline"
+              >
+                {editing ? "完了" : "編集"}
+              </button>
+            </div>
           </div>
-          <Button onClick={handleCopyShareUrl} className="w-full">
-            {shareUrlCopied ? "コピーしました!" : "URLをコピー"}
+          <p className="text-xs text-muted mb-3">
+            このメッセージを参加者に送って、日程を入力してもらいましょう
+          </p>
+          {editing ? (
+            <Textarea
+              value={editedMessage}
+              onChange={(e) => setEditedMessage(e.target.value)}
+              rows={10}
+              className="mb-3 text-sm"
+            />
+          ) : (
+            <div className="bg-background rounded-lg p-3 mb-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {shareMessage}
+            </div>
+          )}
+          <Button onClick={handleCopyShareMessage} className="w-full">
+            {shareMessageCopied ? "コピーしました!" : "メッセージをコピー"}
           </Button>
         </div>
 

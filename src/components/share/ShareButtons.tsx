@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button } from "@/components/ui";
-import { ShareMessageEditor } from "./ShareMessageEditor";
-import { getLineShareUrl } from "@/lib/share/line";
+import { Button, Textarea } from "@/components/ui";
+import {
+  formatDeadline,
+  generateShareMessage,
+  generateFinalizedMessage,
+  generateReminderMessage,
+} from "@/lib/share/message";
 import type { Candidate } from "@/types";
 
 interface ShareButtonsProps {
@@ -12,48 +16,7 @@ interface ShareButtonsProps {
   candidates?: Candidate[];
   responseDeadline?: string | null;
   finalizedCandidate?: Candidate | null;
-}
-
-const WEEKDAY_DATES = [
-  "2000-01-02",
-  "2000-01-03",
-  "2000-01-04",
-  "2000-01-05",
-  "2000-01-06",
-  "2000-01-07",
-  "2000-01-08",
-];
-
-function formatDeadline(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
-}
-
-function formatCandidateForPreview(c: Candidate): string {
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  if (WEEKDAY_DATES.includes(c.date)) {
-    const dayIndex = WEEKDAY_DATES.indexOf(c.date);
-    let result = `${weekdays[dayIndex]}曜日`;
-    if (c.start_time) {
-      result += ` ${c.start_time.slice(0, 5)}`;
-      if (c.end_time) result += `〜${c.end_time.slice(0, 5)}`;
-    }
-    return result;
-  }
-  const date = new Date(c.date);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = weekdays[date.getDay()];
-  let result = `${month}/${day}(${weekday})`;
-  if (c.start_time) {
-    result += ` ${c.start_time.slice(0, 5)}`;
-    if (c.end_time) result += `〜${c.end_time.slice(0, 5)}`;
-  }
-  return result;
+  isAdminMode?: boolean;
 }
 
 export function ShareButtons({
@@ -62,70 +25,70 @@ export function ShareButtons({
   candidates = [],
   responseDeadline,
   finalizedCandidate,
+  isAdminMode = false,
 }: ShareButtonsProps) {
-  const [copied, setCopied] = useState(false);
-  const [reminderCopied, setReminderCopied] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  // スタイルクラス
+  const messageBoxClass = isAdminMode
+    ? "bg-admin-bg rounded-lg p-4 border border-admin-border"
+    : "bg-background rounded-lg p-4 border border-border";
+  const labelClass = isAdminMode
+    ? "text-xs text-admin-muted font-medium"
+    : "text-xs text-muted font-medium";
+  const textClass = isAdminMode ? "text-admin-foreground" : "text-foreground";
+  const [copied, setCopied] = useState<string | null>(null);
 
-  // プレビュー用の共有メッセージを生成
-  const previewMessage = useMemo(() => {
-    // 確定済みの場合
+  // 編集モード
+  const [editingShare, setEditingShare] = useState(false);
+  const [editingReminder, setEditingReminder] = useState(false);
+
+  // デフォルトメッセージ
+  const defaultShareMessage = useMemo(() => {
     if (finalizedCandidate) {
-      const dateStr = formatCandidateForPreview(finalizedCandidate);
-      return `【決定】${title}\n\n日程が決定しました!\n\n${dateStr}\n\n▼ 詳細はこちら\n${url}`;
+      return generateFinalizedMessage(title, url, finalizedCandidate);
     }
+    return generateShareMessage({ title, url, candidates, responseDeadline });
+  }, [title, candidates, url, responseDeadline, finalizedCandidate]);
 
-    if (candidates.length === 0) return null;
-    const candidateList = candidates
-      .slice(0, 5)
-      .map((c) => `・${formatCandidateForPreview(c)}`)
-      .join("\n");
-    const moreText =
-      candidates.length > 5 ? `\n...他${candidates.length - 5}件` : "";
-    return `${title}の日程調整\n\n以下の候補からご都合のよい日程をお選びください。\n${candidateList}${moreText}\n\n▼ ご回答はこちら\n${url}`;
-  }, [title, candidates, url, finalizedCandidate]);
+  const defaultReminderMessage = useMemo(
+    () => generateReminderMessage(title, url, responseDeadline),
+    [title, responseDeadline, url],
+  );
 
-  const handleCopyLink = async () => {
+  // ユーザーが編集した場合のみカスタムメッセージを保持（nullはデフォルトを使用）
+  const [customShareMessage, setCustomShareMessage] = useState<string | null>(
+    null,
+  );
+  const [customReminderMessage, setCustomReminderMessage] = useState<
+    string | null
+  >(null);
+
+  // 表示用メッセージ（カスタムがあればそれを、なければデフォルト）
+  const shareMessage = customShareMessage ?? defaultShareMessage;
+  const reminderMessage = customReminderMessage ?? defaultReminderMessage;
+
+  const handleCopy = async (text: string, type: string) => {
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
   };
 
-  const handleCopyReminder = async () => {
-    if (!responseDeadline) return;
-    try {
-      const deadlineFormatted = formatDeadline(responseDeadline);
-      const reminderMessage = `【リマインド】${title}の日程調整
-
-まだ回答されていない方は、${deadlineFormatted}までにご回答をお願いします。
-
-▼ 回答はこちら
-${url}`;
-      await navigator.clipboard.writeText(reminderMessage);
-      setReminderCopied(true);
-      setTimeout(() => setReminderCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+  const handleResetShare = () => {
+    setCustomShareMessage(null);
   };
 
-  const handleLineShare = () => {
-    const message = finalizedCandidate
-      ? `【決定】${title}`
-      : `【日程調整】${title}`;
-    const lineUrl = getLineShareUrl(url, message);
-    window.open(lineUrl, "_blank", "noopener,noreferrer");
+  const handleResetReminder = () => {
+    setCustomReminderMessage(null);
   };
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* 締め切り表示 */}
       {responseDeadline && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
           <p className="text-sm text-amber-800">
             回答締め切り:{" "}
             <span className="font-semibold">
@@ -135,65 +98,104 @@ ${url}`;
         </div>
       )}
 
-      {/* プレビューパネル */}
-      {previewMessage && (
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => setShowPreview(!showPreview)}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
-          >
-            <span>{showPreview ? "▼" : "▶"}</span>
-            共有時のメッセージをプレビュー
-          </button>
-          {showPreview && (
-            <div className="mt-2 bg-background rounded-lg p-4 border border-border">
-              <div className="whitespace-pre-wrap text-sm text-foreground">
-                {previewMessage}
-              </div>
-              <p className="text-xs text-muted mt-2">
-                ※「文面を編集」で内容をカスタマイズできます
-              </p>
-            </div>
-          )}
+      {/* 共有メッセージ */}
+      <div className={messageBoxClass}>
+        <div className="flex items-center justify-between mb-2">
+          <p className={labelClass}>共有メッセージ</p>
+          <div className="flex gap-2">
+            {editingShare && customShareMessage !== null && (
+              <button
+                onClick={handleResetShare}
+                className={`text-xs ${isAdminMode ? "text-admin-muted hover:text-admin-foreground" : "text-muted hover:text-foreground"}`}
+              >
+                リセット
+              </button>
+            )}
+            <button
+              onClick={() => setEditingShare(!editingShare)}
+              className="text-xs text-primary hover:underline"
+            >
+              {editingShare ? "完了" : "編集"}
+            </button>
+          </div>
         </div>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        <Button
-          onClick={handleLineShare}
-          variant="primary"
-          className="bg-[#06C755] hover:bg-[#05a648]"
-        >
-          LINEで共有
-        </Button>
-        {candidates.length > 0 && (
-          <Button onClick={() => setShowEditor(true)} variant="outline">
-            文面を編集
-          </Button>
+        {editingShare ? (
+          <Textarea
+            value={shareMessage}
+            onChange={(e) => setCustomShareMessage(e.target.value)}
+            rows={8}
+            className={`text-sm ${isAdminMode ? "bg-admin-card-bg text-admin-foreground border-admin-border" : ""}`}
+          />
+        ) : (
+          <div
+            className={`whitespace-pre-wrap text-sm max-h-40 overflow-y-auto ${textClass}`}
+          >
+            {shareMessage}
+          </div>
         )}
-        <Button onClick={handleCopyLink} variant="outline">
-          {copied ? "コピーしました!" : "リンクをコピー"}
-        </Button>
       </div>
 
-      {responseDeadline && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <p className="text-sm text-muted mb-2">未回答者へのリマインド用</p>
-          <Button onClick={handleCopyReminder} variant="outline" size="sm">
-            {reminderCopied ? "コピーしました!" : "リマインド文面をコピー"}
-          </Button>
+      {/* リマインド文 */}
+      <div className={messageBoxClass}>
+        <div className="flex items-center justify-between mb-2">
+          <p className={labelClass}>リマインド文</p>
+          <div className="flex gap-2">
+            {editingReminder && customReminderMessage !== null && (
+              <button
+                onClick={handleResetReminder}
+                className={`text-xs ${isAdminMode ? "text-admin-muted hover:text-admin-foreground" : "text-muted hover:text-foreground"}`}
+              >
+                リセット
+              </button>
+            )}
+            <button
+              onClick={() => setEditingReminder(!editingReminder)}
+              className="text-xs text-primary hover:underline"
+            >
+              {editingReminder ? "完了" : "編集"}
+            </button>
+          </div>
         </div>
-      )}
+        {editingReminder ? (
+          <Textarea
+            value={reminderMessage}
+            onChange={(e) => setCustomReminderMessage(e.target.value)}
+            rows={5}
+            className={`text-sm ${isAdminMode ? "bg-admin-card-bg text-admin-foreground border-admin-border" : ""}`}
+          />
+        ) : (
+          <div
+            className={`whitespace-pre-wrap text-sm max-h-32 overflow-y-auto ${textClass}`}
+          >
+            {reminderMessage}
+          </div>
+        )}
+      </div>
 
-      {showEditor && (
-        <ShareMessageEditor
-          url={url}
-          title={title}
-          candidates={candidates}
-          onClose={() => setShowEditor(false)}
-        />
-      )}
-    </>
+      {/* コピーボタン */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => handleCopy(shareMessage, "share")}
+          variant="primary"
+          className="flex-1 min-w-[140px]"
+        >
+          {copied === "share" ? "コピーしました" : "共有メッセージをコピー"}
+        </Button>
+        <Button
+          onClick={() => handleCopy(reminderMessage, "reminder")}
+          variant="outline"
+          className="flex-1 min-w-[140px]"
+        >
+          {copied === "reminder" ? "コピーしました" : "リマインド文をコピー"}
+        </Button>
+        <Button
+          onClick={() => handleCopy(url, "link")}
+          variant="outline"
+          className="flex-1 min-w-[100px]"
+        >
+          {copied === "link" ? "コピーしました" : "リンクをコピー"}
+        </Button>
+      </div>
+    </div>
   );
 }

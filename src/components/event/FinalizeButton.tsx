@@ -65,6 +65,7 @@ export function FinalizeButton({
 
   useEffect(() => {
     const hostToken = localStorage.getItem(`host_token_${eventId}`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration
     setIsHost(!!hostToken);
   }, [eventId]);
 

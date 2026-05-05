@@ -63,7 +63,8 @@ export async function GET(
       .eq("event_id", eventId);
 
     // host_token を除外してレスポンス
-    const { host_token: _, ...eventWithoutToken } = event;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { host_token: _hostToken, ...eventWithoutToken } = event;
 
     return NextResponse.json({
       event: eventWithoutToken,

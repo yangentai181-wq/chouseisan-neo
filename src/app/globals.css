@@ -12,6 +12,13 @@
   --muted: #64748b;
   --border: #e2e8f0;
   --card-bg: #ffffff;
+
+  /* 管理者モード */
+  --admin-bg: #1e293b;
+  --admin-card-bg: #334155;
+  --admin-border: #475569;
+  --admin-foreground: #f1f5f9;
+  --admin-muted: #94a3b8;
 }
 
 @theme inline {
@@ -26,6 +33,11 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card-bg: var(--card-bg);
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-card-bg: var(--admin-card-bg);
+  --color-admin-border: var(--admin-border);
+  --color-admin-foreground: var(--admin-foreground);
+  --color-admin-muted: var(--admin-muted);
   --font-sans: "JetBrains Mono", monospace;
   --font-mono: "JetBrains Mono", monospace;
 }
@@ -51,4 +63,30 @@ body {
 
 .vote-cell[data-availability="unavailable"] {
   @apply bg-gray-200 text-gray-500;
+}
+
+/* 候補追加パネルのスライドインアニメーション */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slideInFromTop 0.3s ease-out;
+}
+
+/* iOS Safe Area対応 */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* アクティブ状態のスケール */
+.active\:scale-98:active {
+  transform: scale(0.98);
 }

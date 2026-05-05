@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       mode,
       duration_minutes,
       response_deadline,
+      host_pin,
       candidates,
     } = parsed.data;
     const supabase = await createClient();
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     const { error: eventError } = await supabase.from("events").insert({
       id: eventId,
       host_token: hostToken,
+      host_pin: host_pin,
       title,
       description: description || null,
       mode: mode || "event",

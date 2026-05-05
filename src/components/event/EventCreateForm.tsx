@@ -61,6 +61,7 @@ export function EventCreateForm() {
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
   const [hasDeadline, setHasDeadline] = useState(false);
   const [responseDeadline, setResponseDeadline] = useState("");
+  const [hostPin, setHostPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -79,6 +80,11 @@ export function EventCreateForm() {
       return;
     }
 
+    if (!/^\d{4}$/.test(hostPin)) {
+      setError("管理用PINは4桁の数字で入力してください");
+      return;
+    }
+
     setShowConfirmation(true);
   };
 
@@ -91,9 +97,11 @@ export function EventCreateForm() {
         title: title.trim(),
         description: description.trim() || undefined,
         mode,
-        duration_minutes: mode === "meeting" ? durationMinutes : undefined,
+        duration_minutes:
+          mode === "meeting" || mode === "event" ? durationMinutes : undefined,
         response_deadline:
           hasDeadline && responseDeadline ? responseDeadline : undefined,
+        host_pin: hostPin,
         candidates,
       };
 
@@ -175,9 +183,11 @@ export function EventCreateForm() {
             <p className="text-foreground">{modeLabel}</p>
           </div>
 
-          {mode === "meeting" && (
+          {(mode === "meeting" || mode === "event") && (
             <div>
-              <span className="text-xs text-muted">所要時間</span>
+              <span className="text-xs text-muted">
+                {mode === "meeting" ? "所要時間" : "1枠の長さ"}
+              </span>
               <p className="text-foreground">
                 {
                   DURATION_OPTIONS.find((d) => d.value === durationMinutes)
@@ -275,10 +285,10 @@ export function EventCreateForm() {
 
       <ModeSelector value={mode} onChange={setMode} />
 
-      {mode === "meeting" && (
+      {(mode === "meeting" || mode === "event") && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
-            会議の所要時間
+            {mode === "meeting" ? "会議の所要時間" : "1枠の長さ"}
           </label>
           <div className="flex flex-wrap gap-2">
             {DURATION_OPTIONS.map((option) => (
@@ -297,7 +307,9 @@ export function EventCreateForm() {
             ))}
           </div>
           <p className="text-xs text-muted">
-            この時間分、全員が空いている枠を探します
+            {mode === "meeting"
+              ? "この時間分、全員が空いている枠を探します"
+              : "候補日時の時間枠を指定します（例：10:00〜11:00）"}
           </p>
         </div>
       )}
@@ -340,6 +352,26 @@ export function EventCreateForm() {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-foreground">
+          管理用PIN（4桁の数字）
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          value={hostPin}
+          onChange={(e) => setHostPin(e.target.value.replace(/\D/g, ""))}
+          placeholder="1234"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-center text-2xl tracking-widest"
+          required
+        />
+        <p className="text-xs text-muted">
+          管理用URLを紛失した場合、このPINで管理画面にアクセスできます
+        </p>
       </div>
 
       <Button type="submit" loading={loading} className="w-full" size="lg">

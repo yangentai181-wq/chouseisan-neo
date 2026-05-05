@@ -126,8 +126,10 @@ export function VotingForm({
   >(initialState.preferences);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleCellClick = (candidateId: string) => {
+    setSuccess(false);
     setCurrentVotes((prev) => ({
       ...prev,
       [candidateId]: getNextAvailability(prev[candidateId] || "unavailable"),
@@ -138,6 +140,7 @@ export function VotingForm({
     candidateId: string,
     availability: Availability,
   ) => {
+    setSuccess(false);
     setCurrentVotes((prev) => ({
       ...prev,
       [candidateId]: availability,
@@ -149,6 +152,7 @@ export function VotingForm({
     availability: Availability,
     preference: number | null,
   ) => {
+    setSuccess(false);
     setCurrentVotes((prev) => ({
       ...prev,
       [candidateId]: availability,
@@ -162,6 +166,7 @@ export function VotingForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(false);
 
     if (!name.trim()) {
       setError("名前を入力してください");
@@ -208,6 +213,9 @@ export function VotingForm({
       );
       localStorage.setItem(`participant_name_${eventId}`, name.trim());
 
+      // 成功フィードバックを表示
+      setSuccess(true);
+
       // ページをリロードして最新の投票を表示
       router.refresh();
     } catch (err) {
@@ -219,6 +227,25 @@ export function VotingForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {success && (
+        <div className="bg-success/10 border border-success text-success px-4 py-3 rounded-lg flex items-center gap-2">
+          <svg
+            className="w-5 h-5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          <span>回答を送信しました</span>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-error text-error px-4 py-3 rounded-lg">
           {error}
@@ -266,8 +293,33 @@ export function VotingForm({
             disabled={!!participantToken}
           />
         </div>
-        <Button type="submit" loading={loading}>
-          {participantToken ? "回答を更新" : "回答する"}
+        <Button
+          type="submit"
+          loading={loading}
+          className={success ? "bg-success hover:bg-success" : ""}
+        >
+          {success ? (
+            <span className="flex items-center gap-1.5">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              送信完了
+            </span>
+          ) : participantToken ? (
+            "回答を更新"
+          ) : (
+            "回答する"
+          )}
         </Button>
       </div>
     </form>

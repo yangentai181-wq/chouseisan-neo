@@ -20,6 +20,7 @@ interface Event {
 interface ManagePanelProps {
   eventId: string;
   hostToken: string;
+  isAdminMode?: boolean;
 }
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -84,7 +85,17 @@ function findBestCandidate(
   return bestCandidate;
 }
 
-export function ManagePanel({ eventId, hostToken }: ManagePanelProps) {
+export function ManagePanel({
+  eventId,
+  hostToken,
+  isAdminMode = false,
+}: ManagePanelProps) {
+  // スタイルクラス
+  const cardClass = isAdminMode
+    ? "bg-admin-card-bg rounded-xl shadow-sm border border-admin-border p-6"
+    : "bg-card-bg rounded-xl shadow-sm border border-border p-6";
+  const textClass = isAdminMode ? "text-admin-foreground" : "text-foreground";
+  const mutedClass = isAdminMode ? "text-admin-muted" : "text-muted";
   const router = useRouter();
   const [event, setEvent] = useState<Event | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -128,6 +139,7 @@ export function ManagePanel({ eventId, hostToken }: ManagePanelProps) {
   }, [eventId, hostToken]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching
     fetchData();
   }, [fetchData]);
 
@@ -211,21 +223,16 @@ export function ManagePanel({ eventId, hostToken }: ManagePanelProps) {
   return (
     <>
       <header className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded">
-            管理者
-          </span>
-        </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">
+        <h1 className={`text-2xl font-bold ${textClass} mb-2`}>
           {event.title}
         </h1>
-        {event.description && <p className="text-muted">{event.description}</p>}
+        {event.description && <p className={mutedClass}>{event.description}</p>}
       </header>
 
       {/* 管理URLセクション */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-        <h2 className="text-sm font-semibold text-amber-800 mb-2">管理用URL</h2>
-        <p className="text-xs text-amber-700 mb-3">
+      <div className={`${cardClass} mb-6`}>
+        <h2 className={`text-sm font-semibold ${textClass} mb-2`}>管理用URL</h2>
+        <p className={`text-xs ${mutedClass} mb-3`}>
           このURLを使えば、他のデバイスやブラウザからでも管理操作ができます。大切に保管してください。
         </p>
         <Button onClick={handleCopyManageUrl} variant="outline" size="sm">
@@ -237,15 +244,17 @@ export function ManagePanel({ eventId, hostToken }: ManagePanelProps) {
       {event.status === "finalized" && finalizedCandidate ? (
         <div className="bg-success/10 border border-success rounded-xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-success mb-2">確定日程</h2>
-          <p className="text-xl font-medium">
+          <p className={`text-xl font-medium ${textClass}`}>
             {formatCandidateShort(finalizedCandidate)}
           </p>
         </div>
       ) : (
-        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">日程を確定</h2>
+        <div className={`${cardClass} mb-6`}>
+          <h2 className={`text-lg font-semibold ${textClass} mb-4`}>
+            日程を確定
+          </h2>
           {recommendedCandidate && (
-            <p className="text-sm text-muted mb-3">
+            <p className={`text-sm ${mutedClass} mb-3`}>
               おすすめ: {formatCandidateShort(recommendedCandidate)}
             </p>
           )}
@@ -256,20 +265,21 @@ export function ManagePanel({ eventId, hostToken }: ManagePanelProps) {
       )}
 
       {/* 回答一覧 */}
-      <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">回答一覧</h2>
+      <div className={`${cardClass} mb-6`}>
+        <h2 className={`text-lg font-semibold ${textClass} mb-4`}>回答一覧</h2>
         <VotingGrid candidates={candidates} votes={votes} />
       </div>
 
       {/* 共有 */}
-      <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6">
-        <h2 className="text-lg font-semibold mb-4">共有</h2>
+      <div className={cardClass}>
+        <h2 className={`text-lg font-semibold ${textClass} mb-4`}>共有</h2>
         <ShareButtons
           url={shareUrl}
           title={event.title}
           candidates={candidates}
           responseDeadline={event.response_deadline}
           finalizedCandidate={finalizedCandidate}
+          isAdminMode={isAdminMode}
         />
       </div>
 

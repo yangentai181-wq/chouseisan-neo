@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui";
 import type { EventMode } from "@/types";
 
@@ -37,17 +37,6 @@ const WEEKDAY_DATES = [
   "2000-01-06", // 木曜
   "2000-01-07", // 金曜
   "2000-01-08", // 土曜
-];
-
-const QUICK_TIMES = [
-  { label: "終日", start: "", end: "", category: "basic" },
-  { label: "午前", start: "10:00", end: "12:00", category: "basic" },
-  { label: "午後", start: "13:00", end: "17:00", category: "basic" },
-  { label: "ランチ", start: "12:00", end: "13:00", category: "meal" },
-  { label: "ディナー", start: "18:00", end: "20:00", category: "meal" },
-  { label: "飲み会", start: "19:00", end: "22:00", category: "meal" },
-  { label: "朝会", start: "09:00", end: "10:00", category: "meeting" },
-  { label: "夕方MTG", start: "17:00", end: "18:00", category: "meeting" },
 ];
 
 // 15分刻みの時間オプション（6:00〜24:00）
@@ -168,12 +157,8 @@ export function CandidateDatePicker({
     new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-  const [selectedTime, setSelectedTime] = useState(QUICK_TIMES[0]);
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [useCustomTime, setUseCustomTime] = useState(false);
 
-  // 全員集合モード用: 時間範囲
+  // 時間範囲選択
   const [rangeStart, setRangeStart] = useState("09:00");
   const [rangeEnd, setRangeEnd] = useState("18:00");
 
@@ -182,25 +167,102 @@ export function CandidateDatePicker({
     new Set(),
   );
   const [frequency, setFrequency] = useState("weekly");
-  const [regularStartTime, setRegularStartTime] = useState("10:00");
-  const [regularEndTime, setRegularEndTime] = useState("11:00");
+  const [regularRangeStart, setRegularRangeStart] = useState("09:00");
+  const [regularRangeEnd, setRegularRangeEnd] = useState("18:00");
+  const [regularDuration, setRegularDuration] = useState(60);
 
-  // ドラッグ選択用
+  // 曜日ドラッグ選択用
+  const [isDraggingWeekday, setIsDraggingWeekday] = useState(false);
+  const [dragModeWeekday, setDragModeWeekday] = useState<"select" | "deselect">(
+    "select",
+  );
+  const [draggedWeekdays, setDraggedWeekdays] = useState<Set<number>>(
+    new Set(),
+  );
+
+  // カレンダードラッグ選択用
   const [isDragging, setIsDragging] = useState(false);
   const [dragMode, setDragMode] = useState<"select" | "deselect">("select");
   const [draggedDates, setDraggedDates] = useState<Set<string>>(new Set());
 
-  // カレンダー週始まり
-  const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(false);
+  // カレンダー週始まり（デフォルト月曜始まり）
+  const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(true);
 
   const isMeetingMode = mode === "meeting";
   const isRegularMode = mode === "regular";
+
+  // ドラッグ終了
+  const handleDragEnd = useCallback(() => {
+    if (!isDragging) return;
+
+    setSelectedDates((prev) => {
+      const next = new Set(prev);
+      draggedDates.forEach((key) => {
+        if (dragMode === "select") {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
+      });
+      return next;
+    });
+
+    setIsDragging(false);
+    setDraggedDates(new Set());
+  }, [isDragging, draggedDates, dragMode]);
+
+  // 曜日ドラッグ終了
+  const handleWeekdayDragEnd = useCallback(() => {
+    if (!isDraggingWeekday) return;
+
+    setSelectedWeekdays((prev) => {
+      const next = new Set(prev);
+      draggedWeekdays.forEach((day) => {
+        if (dragModeWeekday === "select") {
+          next.add(day);
+        } else {
+          next.delete(day);
+        }
+      });
+      return next;
+    });
+
+    setIsDraggingWeekday(false);
+    setDraggedWeekdays(new Set());
+  }, [isDraggingWeekday, draggedWeekdays, dragModeWeekday]);
+
+  // 曜日ドラッグ開始
+  const handleWeekdayDragStart = useCallback(
+    (day: number) => {
+      const isCurrentlySelected = selectedWeekdays.has(day);
+      setIsDraggingWeekday(true);
+      setDragModeWeekday(isCurrentlySelected ? "deselect" : "select");
+      setDraggedWeekdays(new Set([day]));
+    },
+    [selectedWeekdays],
+  );
+
+  // 曜日ドラッグ中
+  const handleWeekdayDragEnter = useCallback(
+    (day: number) => {
+      if (!isDraggingWeekday) return;
+      setDraggedWeekdays((prev) => {
+        const next = new Set(prev);
+        next.add(day);
+        return next;
+      });
+    },
+    [isDraggingWeekday],
+  );
 
   // グローバルなマウスアップでドラッグ終了
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDragging) {
         handleDragEnd();
+      }
+      if (isDraggingWeekday) {
+        handleWeekdayDragEnd();
       }
     };
     window.addEventListener("mouseup", handleGlobalMouseUp);
@@ -209,7 +271,7 @@ export function CandidateDatePicker({
       window.removeEventListener("mouseup", handleGlobalMouseUp);
       window.removeEventListener("touchend", handleGlobalMouseUp);
     };
-  }, [isDragging, draggedDates, dragMode]);
+  }, [isDragging, handleDragEnd, isDraggingWeekday, handleWeekdayDragEnd]);
 
   const days = useMemo(
     () =>
@@ -226,19 +288,6 @@ export function CandidateDatePicker({
   const candidateDateSet = useMemo(() => {
     return new Set(candidates.map((c) => c.date));
   }, [candidates]);
-
-  const handleDateClick = (date: Date) => {
-    const key = formatDateKey(date);
-    setSelectedDates((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
 
   // ドラッグ開始
   const handleDragStart = (date: Date) => {
@@ -263,26 +312,6 @@ export function CandidateDatePicker({
     });
   };
 
-  // ドラッグ終了
-  const handleDragEnd = () => {
-    if (!isDragging) return;
-
-    setSelectedDates((prev) => {
-      const next = new Set(prev);
-      draggedDates.forEach((key) => {
-        if (dragMode === "select") {
-          next.add(key);
-        } else {
-          next.delete(key);
-        }
-      });
-      return next;
-    });
-
-    setIsDragging(false);
-    setDraggedDates(new Set());
-  };
-
   const handlePrevMonth = () => {
     setCurrentMonth(
       new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
@@ -295,38 +324,7 @@ export function CandidateDatePicker({
     );
   };
 
-  const handleAddCandidates = () => {
-    if (selectedDates.size === 0) return;
-
-    const startTime = useCustomTime ? customStart : selectedTime.start;
-    const endTime = useCustomTime ? customEnd : selectedTime.end;
-
-    const newCandidates: CandidateDate[] = Array.from(selectedDates)
-      .sort()
-      .map((date) => ({
-        date,
-        ...(startTime && { start_time: startTime }),
-        ...(endTime && { end_time: endTime }),
-      }));
-
-    // 重複を除いて追加
-    const existingKeys = new Set(
-      candidates.map(
-        (c) => `${c.date}-${c.start_time || ""}-${c.end_time || ""}`,
-      ),
-    );
-    const uniqueNew = newCandidates.filter(
-      (c) =>
-        !existingKeys.has(
-          `${c.date}-${c.start_time || ""}-${c.end_time || ""}`,
-        ),
-    );
-
-    onChange([...candidates, ...uniqueNew]);
-    setSelectedDates(new Set());
-  };
-
-  // 全員集合モード: 時間範囲から自動生成
+  // 時間範囲から自動生成
   const handleGenerateSlots = () => {
     if (selectedDates.size === 0) return;
 
@@ -361,23 +359,45 @@ export function CandidateDatePicker({
   };
 
   // プレビュー用: 生成されるスロット数
+  // イベントモード・ミーティングモード共通で時間枠を生成
   const previewSlots = useMemo(() => {
-    if (!isMeetingMode) return [];
+    if (isRegularMode) return [];
     return generateTimeSlots(rangeStart, rangeEnd, durationMinutes);
-  }, [isMeetingMode, rangeStart, rangeEnd, durationMinutes]);
+  }, [isRegularMode, rangeStart, rangeEnd, durationMinutes]);
+
+  // 定期開催モード用: 生成されるスロット数
+  const regularPreviewSlots = useMemo(() => {
+    if (!isRegularMode) return [];
+    return generateTimeSlots(
+      regularRangeStart,
+      regularRangeEnd,
+      regularDuration,
+    );
+  }, [isRegularMode, regularRangeStart, regularRangeEnd, regularDuration]);
 
   // 定期開催モード: 曜日と時間から候補を追加
   const handleAddRegularCandidates = () => {
     if (selectedWeekdays.size === 0) return;
-    if (!regularStartTime) return;
 
-    const newCandidates: CandidateDate[] = Array.from(selectedWeekdays)
-      .sort()
-      .map((dayOfWeek) => ({
-        date: WEEKDAY_DATES[dayOfWeek],
-        start_time: regularStartTime,
-        end_time: regularEndTime || undefined,
-      }));
+    const slots = generateTimeSlots(
+      regularRangeStart,
+      regularRangeEnd,
+      regularDuration,
+    );
+    if (slots.length === 0) return;
+
+    const newCandidates: CandidateDate[] = [];
+    const sortedWeekdays = Array.from(selectedWeekdays).sort();
+
+    for (const dayOfWeek of sortedWeekdays) {
+      for (const slot of slots) {
+        newCandidates.push({
+          date: WEEKDAY_DATES[dayOfWeek],
+          start_time: slot.start,
+          end_time: slot.end,
+        });
+      }
+    }
 
     // 重複を除いて追加
     const existingKeys = new Set(
@@ -464,82 +484,160 @@ export function CandidateDatePicker({
           </div>
         </div>
 
-        {/* 曜日選択 */}
+        {/* 曜日選択（月曜始まり・ドラッグ対応） */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <label className="block text-sm font-medium text-foreground">
             曜日を選択
           </label>
-          <div className="flex gap-2">
-            {WEEKDAYS.map((day, i) => (
-              <button
-                key={day}
-                type="button"
-                onClick={() => handleWeekdayToggle(i)}
-                className={`w-10 h-10 rounded-full text-sm font-medium transition-all ${
-                  selectedWeekdays.has(i)
-                    ? "bg-primary text-white"
-                    : i === 0
-                      ? "bg-background text-red-500 hover:bg-border"
-                      : i === 6
-                        ? "bg-background text-blue-500 hover:bg-border"
-                        : "bg-background text-foreground hover:bg-border"
-                }`}
-              >
-                {day}
-              </button>
-            ))}
+          <div
+            className="flex gap-2 select-none"
+            onMouseLeave={handleWeekdayDragEnd}
+            onMouseUp={handleWeekdayDragEnd}
+            onTouchEnd={handleWeekdayDragEnd}
+          >
+            {[1, 2, 3, 4, 5, 6, 0].map((i) => {
+              const isSelected = selectedWeekdays.has(i);
+              const isDragTarget = isDraggingWeekday && draggedWeekdays.has(i);
+              const previewSelected =
+                isDragTarget && dragModeWeekday === "select" && !isSelected;
+              const previewDeselected =
+                isDragTarget && dragModeWeekday === "deselect" && isSelected;
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleWeekdayDragStart(i);
+                  }}
+                  onMouseEnter={() => handleWeekdayDragEnter(i)}
+                  onTouchStart={() => handleWeekdayDragStart(i)}
+                  className={`w-10 h-10 rounded-full text-sm font-medium transition-all touch-none ${
+                    (isSelected && !previewDeselected) || previewSelected
+                      ? "bg-primary text-white"
+                      : previewDeselected
+                        ? "bg-primary/30 text-primary"
+                        : i === 0
+                          ? "bg-background text-red-500 hover:bg-border"
+                          : i === 6
+                            ? "bg-background text-blue-500 hover:bg-border"
+                            : "bg-background text-foreground hover:bg-border"
+                  }`}
+                >
+                  {WEEKDAYS[i]}
+                </button>
+              );
+            })}
           </div>
           <p className="text-xs text-muted">
-            複数選択可。参加者は選んだ曜日の中から希望順位をつけます。
+            タップまたはドラッグで選択。参加者は選んだ曜日の中から希望順位をつけます。
           </p>
         </div>
 
-        {/* 時間帯入力 */}
-        <div className="border border-border rounded-lg p-4 space-y-3">
-          <label className="block text-sm font-medium text-foreground">
-            時間帯
-          </label>
-          <div className="flex gap-2 items-center">
-            <select
-              value={regularStartTime}
-              onChange={(e) => setRegularStartTime(e.target.value)}
-              className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-            >
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted">〜</span>
-            <select
-              value={regularEndTime}
-              onChange={(e) => setRegularEndTime(e.target.value)}
-              className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-            >
-              {TIME_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 追加ボタン */}
+        {/* 時間設定パネル（曜日選択時に表示） */}
         {selectedWeekdays.size > 0 && (
-          <Button
-            type="button"
-            onClick={handleAddRegularCandidates}
-            className="w-full"
-          >
-            {selectedWeekdays.size}つの曜日を候補に追加
-          </Button>
+          <div className="border-2 border-primary rounded-lg p-4 space-y-3 bg-primary/5 animate-in">
+            <p className="text-sm font-medium text-primary">
+              {selectedWeekdays.size}曜日選択中 → 時間を選んで追加
+            </p>
+
+            {/* 所要時間選択 */}
+            <div className="space-y-2">
+              <label className="text-sm text-muted">所要時間</label>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 120].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setRegularDuration(d)}
+                    className={`px-4 py-2 rounded-lg text-sm border-2 transition-all ${
+                      regularDuration === d
+                        ? "border-primary bg-white text-primary"
+                        : "border-white bg-white hover:border-muted"
+                    }`}
+                  >
+                    {d >= 60
+                      ? `${Math.floor(d / 60)}時間${d % 60 > 0 ? `${d % 60}分` : ""}`
+                      : `${d}分`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 候補時間の範囲 */}
+            <div className="space-y-2">
+              <label className="text-sm text-muted">候補時間の範囲</label>
+              <div className="flex gap-2 items-center">
+                <select
+                  value={regularRangeStart}
+                  onChange={(e) => setRegularRangeStart(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
+                >
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-muted">〜</span>
+                <select
+                  value={regularRangeEnd}
+                  onChange={(e) => setRegularRangeEnd(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
+                >
+                  {TIME_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* プレビュー */}
+            {regularPreviewSlots.length > 0 && (
+              <div className="bg-background rounded-lg p-3">
+                <p className="text-xs text-muted mb-2">
+                  生成される枠（{regularDuration}分 ×{" "}
+                  {regularPreviewSlots.length}
+                  枠/曜日）
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {regularPreviewSlots.slice(0, 8).map((slot, i) => (
+                    <span
+                      key={i}
+                      className="text-xs bg-white px-2 py-1 rounded border border-border"
+                    >
+                      {slot.start}-{slot.end}
+                    </span>
+                  ))}
+                  {regularPreviewSlots.length > 8 && (
+                    <span className="text-xs text-muted px-2 py-1">
+                      +{regularPreviewSlots.length - 8}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 追加ボタン */}
+            <Button
+              type="button"
+              onClick={handleAddRegularCandidates}
+              size="lg"
+              className="w-full shadow-lg shadow-primary/30 animate-pulse hover:animate-none"
+              disabled={regularPreviewSlots.length === 0}
+            >
+              {selectedWeekdays.size}曜日 × {regularPreviewSlots.length}枠 ={" "}
+              {selectedWeekdays.size * regularPreviewSlots.length}件を追加
+            </Button>
+          </div>
         )}
 
-        {/* 追加済み候補一覧 */}
+        {/* 追加済み候補一覧（コンパクト表示） */}
         {candidates.length > 0 && (
-          <div className="border border-border rounded-lg p-4">
+          <div className="border border-border rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-foreground">
                 候補一覧（{candidates.length}件）
@@ -552,44 +650,22 @@ export function CandidateDatePicker({
                 すべてクリア
               </button>
             </div>
-            <ul className="space-y-2 max-h-48 overflow-y-auto">
-              {candidates.map((candidate, index) => (
-                <li
-                  key={index}
-                  className="flex items-center justify-between bg-background px-3 py-2 rounded group"
-                >
-                  <span className="text-sm">{formatCandidate(candidate)}</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => moveCandidate(index, "up")}
-                      disabled={index === 0}
-                      className="text-muted hover:text-foreground text-sm disabled:opacity-30 disabled:cursor-not-allowed px-1"
-                      title="上に移動"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveCandidate(index, "down")}
-                      disabled={index === candidates.length - 1}
-                      className="text-muted hover:text-foreground text-sm disabled:opacity-30 disabled:cursor-not-allowed px-1"
-                      title="下に移動"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeCandidate(index)}
-                      className="text-error hover:text-red-700 text-sm px-1"
-                      title="削除"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="max-h-60 overflow-y-auto -mx-1">
+              <div className="flex flex-wrap gap-1 px-1">
+                {candidates.map((candidate, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => removeCandidate(index)}
+                    className="group inline-flex items-center gap-1 bg-background hover:bg-red-50 px-2 py-1 rounded text-xs transition-colors"
+                    title="タップで削除"
+                  >
+                    <span>{formatCandidate(candidate)}</span>
+                    <span className="text-muted group-hover:text-error">×</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -685,7 +761,7 @@ export function CandidateDatePicker({
                   if (!isPast) handleDragStart(date);
                 }}
                 onMouseEnter={() => handleDragEnter(date)}
-                onTouchStart={(e) => {
+                onTouchStart={() => {
                   if (!isPast) handleDragStart(date);
                 }}
                 onTouchMove={(e) => {
@@ -734,164 +810,81 @@ export function CandidateDatePicker({
 
       {/* 時間選択 */}
       {selectedDates.size > 0 && (
-        <div className="border border-border rounded-lg p-4 space-y-3">
-          <p className="text-sm font-medium">{selectedDates.size}日選択中</p>
+        <div className="border-2 border-primary rounded-lg p-4 space-y-3 bg-primary/5 animate-in">
+          <p className="text-sm font-medium text-primary">
+            {selectedDates.size}日選択中 → 時間を選んで追加
+          </p>
 
-          {isMeetingMode ? (
-            /* 全員集合モード: 時間範囲で自動生成 */
-            <>
-              <div className="space-y-2">
-                <label className="text-sm text-muted">候補時間の範囲</label>
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={rangeStart}
-                    onChange={(e) => setRangeStart(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-                  >
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-muted">〜</span>
-                  <select
-                    value={rangeEnd}
-                    onChange={(e) => setRangeEnd(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-                  >
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {previewSlots.length > 0 && (
-                <div className="bg-background rounded-lg p-3">
-                  <p className="text-xs text-muted mb-2">
-                    生成される枠（{durationMinutes}分 × {previewSlots.length}
-                    枠/日）
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {previewSlots.slice(0, 8).map((slot, i) => (
-                      <span
-                        key={i}
-                        className="text-xs bg-white px-2 py-1 rounded border border-border"
-                      >
-                        {slot.start}-{slot.end}
-                      </span>
-                    ))}
-                    {previewSlots.length > 8 && (
-                      <span className="text-xs text-muted px-2 py-1">
-                        +{previewSlots.length - 8}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleGenerateSlots}
-                className="w-full"
-                disabled={previewSlots.length === 0}
+          {/* 時間範囲選択（全モード共通） */}
+          <div className="space-y-2">
+            <label className="text-sm text-muted">候補時間の範囲</label>
+            <div className="flex gap-2 items-center">
+              <select
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
               >
-                {selectedDates.size}日 × {previewSlots.length}枠 ={" "}
-                {selectedDates.size * previewSlots.length}件を追加
-              </Button>
-            </>
-          ) : (
-            /* イベント/定例モード: 従来のクイック選択 */
-            <>
-              <p className="text-sm text-muted">時間帯を選択</p>
-
-              {/* クイック選択 */}
-              <div className="grid grid-cols-4 gap-2">
-                {QUICK_TIMES.map((time) => (
-                  <button
-                    key={time.label}
-                    type="button"
-                    onClick={() => {
-                      setSelectedTime(time);
-                      setUseCustomTime(false);
-                    }}
-                    className={`px-2 py-2 rounded-lg text-sm border transition-all text-center ${
-                      !useCustomTime && selectedTime.label === time.label
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted"
-                    }`}
-                  >
-                    <div className="font-medium">{time.label}</div>
-                    {time.start && (
-                      <div className="text-xs text-muted mt-0.5">
-                        {time.start}〜{time.end || ""}
-                      </div>
-                    )}
-                  </button>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setUseCustomTime(true)}
-                  className={`px-2 py-2 rounded-lg text-sm border transition-all text-center ${
-                    useCustomTime
-                      ? "border-primary bg-primary/5 text-primary"
-                      : "border-border hover:border-muted"
-                  }`}
-                >
-                  <div className="font-medium">カスタム</div>
-                  <div className="text-xs text-muted mt-0.5">時間を指定</div>
-                </button>
-              </div>
-
-              {/* カスタム時間入力 */}
-              {useCustomTime && (
-                <div className="flex gap-2 items-center">
-                  <select
-                    value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-                  >
-                    <option value="">開始</option>
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                  <span>〜</span>
-                  <select
-                    value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
-                  >
-                    <option value="">終了</option>
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleAddCandidates}
-                className="w-full"
+              </select>
+              <span className="text-muted">〜</span>
+              <select
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-white"
               >
-                {selectedDates.size}件の候補日を追加
-              </Button>
-            </>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {previewSlots.length > 0 && (
+            <div className="bg-background rounded-lg p-3">
+              <p className="text-xs text-muted mb-2">
+                生成される枠（{durationMinutes}分 × {previewSlots.length}
+                枠/日）
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {previewSlots.slice(0, 8).map((slot, i) => (
+                  <span
+                    key={i}
+                    className="text-xs bg-white px-2 py-1 rounded border border-border"
+                  >
+                    {slot.start}-{slot.end}
+                  </span>
+                ))}
+                {previewSlots.length > 8 && (
+                  <span className="text-xs text-muted px-2 py-1">
+                    +{previewSlots.length - 8}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
+
+          <Button
+            type="button"
+            onClick={handleGenerateSlots}
+            size="lg"
+            className="w-full shadow-lg shadow-primary/30 animate-pulse hover:animate-none"
+            disabled={previewSlots.length === 0}
+          >
+            {selectedDates.size}日 × {previewSlots.length}枠 ={" "}
+            {selectedDates.size * previewSlots.length}件を追加
+          </Button>
         </div>
       )}
 
-      {/* 追加済み候補一覧 */}
+      {/* 追加済み候補一覧（コンパクト表示） */}
       {candidates.length > 0 && (
-        <div className="border border-border rounded-lg p-4">
+        <div className="border border-border rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-foreground">
               候補日一覧（{candidates.length}件）
@@ -904,44 +897,22 @@ export function CandidateDatePicker({
               すべてクリア
             </button>
           </div>
-          <ul className="space-y-2 max-h-48 overflow-y-auto">
-            {candidates.map((candidate, index) => (
-              <li
-                key={index}
-                className="flex items-center justify-between bg-background px-3 py-2 rounded group"
-              >
-                <span className="text-sm">{formatCandidate(candidate)}</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => moveCandidate(index, "up")}
-                    disabled={index === 0}
-                    className="text-muted hover:text-foreground text-sm disabled:opacity-30 disabled:cursor-not-allowed px-1"
-                    title="上に移動"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveCandidate(index, "down")}
-                    disabled={index === candidates.length - 1}
-                    className="text-muted hover:text-foreground text-sm disabled:opacity-30 disabled:cursor-not-allowed px-1"
-                    title="下に移動"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeCandidate(index)}
-                    className="text-error hover:text-red-700 text-sm px-1"
-                    title="削除"
-                  >
-                    ×
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-60 overflow-y-auto -mx-1">
+            <div className="flex flex-wrap gap-1 px-1">
+              {candidates.map((candidate, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => removeCandidate(index)}
+                  className="group inline-flex items-center gap-1 bg-background hover:bg-red-50 px-2 py-1 rounded text-xs transition-colors"
+                  title="タップで削除"
+                >
+                  <span>{formatCandidate(candidate)}</span>
+                  <span className="text-muted group-hover:text-error">×</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
