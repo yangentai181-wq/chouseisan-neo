@@ -31,7 +31,12 @@ export interface Vote {
   participant_token: string;
 }
 
-export type Availability = "available" | "maybe" | "unavailable";
+// 4段階評価（定期開催モード対応）
+// preferred: ◎ 希望（ぜひこの時間がいい）
+// available: ○ OK（問題なく参加できる）
+// maybe: △ 可能（できれば避けたいが可）
+// unavailable: × 不可（参加できない）
+export type Availability = "preferred" | "available" | "maybe" | "unavailable";
 
 export interface VoteDetail {
   id: string;

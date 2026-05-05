@@ -14,12 +14,41 @@ interface PreferenceVotingProps {
   ) => void;
 }
 
-const PREFERENCE_OPTIONS = [
-  { value: 1, label: "第1希望", icon: "★★★", color: "bg-yellow-400" },
-  { value: 2, label: "第2希望", icon: "★★", color: "bg-yellow-300" },
-  { value: 3, label: "第3希望", icon: "★", color: "bg-yellow-200" },
-  { value: null, label: "希望なし", icon: "−", color: "bg-background" },
-] as const;
+// 4段階評価オプション
+const AVAILABILITY_OPTIONS = [
+  {
+    value: "preferred" as const,
+    label: "希望",
+    icon: "◎",
+    color: "bg-primary",
+    textColor: "text-white",
+    description: "ぜひこの時間がいい",
+  },
+  {
+    value: "available" as const,
+    label: "OK",
+    icon: "○",
+    color: "bg-success",
+    textColor: "text-white",
+    description: "問題なく参加できる",
+  },
+  {
+    value: "maybe" as const,
+    label: "可能",
+    icon: "△",
+    color: "bg-warning",
+    textColor: "text-white",
+    description: "できれば避けたい",
+  },
+  {
+    value: "unavailable" as const,
+    label: "不可",
+    icon: "×",
+    color: "bg-border",
+    textColor: "text-muted",
+    description: "参加できない",
+  },
+];
 
 const WEEKDAY_DATES = [
   "2000-01-02",
@@ -56,7 +85,7 @@ function formatTimeRange(start: string | null, end: string | null): string {
 
 export function PreferenceVoting({
   candidates,
-  currentPreferences,
+  currentVotes,
   onVoteChange,
 }: PreferenceVotingProps) {
   // 日付でグループ化
@@ -71,57 +100,61 @@ export function PreferenceVoting({
     return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
   }, [candidates]);
 
-  // 選択された希望の数をカウント
-  const preferenceCounts = useMemo(() => {
-    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
-    Object.values(currentPreferences).forEach((pref) => {
-      if (pref && pref >= 1 && pref <= 3) {
-        counts[pref]++;
-      }
+  // 各評価の件数をカウント
+  const availabilityCounts = useMemo(() => {
+    const counts: Record<Availability, number> = {
+      preferred: 0,
+      available: 0,
+      maybe: 0,
+      unavailable: 0,
+    };
+    Object.values(currentVotes).forEach((avail) => {
+      counts[avail]++;
     });
     return counts;
-  }, [currentPreferences]);
+  }, [currentVotes]);
 
-  const handlePreferenceClick = (
+  const handleAvailabilityClick = (
     candidateId: string,
-    preference: number | null,
+    availability: Availability,
   ) => {
-    const currentPref = currentPreferences[candidateId];
-
-    // 同じ値をクリックした場合は希望なしに戻す
-    if (currentPref === preference) {
-      onVoteChange(candidateId, "unavailable", null);
-      return;
-    }
-
-    // 希望あり = available, 希望なし = unavailable
-    const availability: Availability = preference ? "available" : "unavailable";
-    onVoteChange(candidateId, availability, preference);
+    // preference は使用しない（null固定）
+    onVoteChange(candidateId, availability, null);
   };
 
   return (
     <div className="space-y-4">
+      {/* 凡例 */}
       <div className="text-sm text-muted">
-        <p>希望順位を選択してください（複数選択可）</p>
-        <div className="flex flex-wrap gap-3 mt-2">
-          {PREFERENCE_OPTIONS.map((opt) => (
-            <span key={opt.label} className="flex items-center gap-1.5">
+        <p className="mb-2">各候補の参加可否を選択してください</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {AVAILABILITY_OPTIONS.map((opt) => (
+            <div
+              key={opt.value}
+              className="flex items-center gap-2 bg-background rounded-lg p-2"
+            >
               <span
-                className={`w-4 h-4 ${opt.color} rounded border border-border flex items-center justify-center text-xs`}
+                className={`w-6 h-6 ${opt.color} ${opt.textColor} rounded flex items-center justify-center text-sm font-medium`}
               >
-                {opt.value ? opt.value : ""}
+                {opt.icon}
               </span>
-              {opt.label}
-              {opt.value && (
-                <span className="text-xs text-muted">
-                  ({preferenceCounts[opt.value]}件)
-                </span>
-              )}
-            </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-foreground text-xs">
+                  {opt.label}
+                  <span className="ml-1 text-muted">
+                    ({availabilityCounts[opt.value]})
+                  </span>
+                </div>
+                <div className="text-xs text-muted truncate">
+                  {opt.description}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
 
+      {/* 候補日リスト */}
       {candidatesByDate.map(([date, dateCandidates]) => (
         <div key={date} className="bg-background rounded-lg p-4">
           <h3 className="font-medium text-foreground mb-3">
@@ -129,9 +162,9 @@ export function PreferenceVoting({
           </h3>
           <div className="space-y-2">
             {dateCandidates.map((candidate) => {
-              const currentPref = currentPreferences[candidate.id];
-              const prefOption = PREFERENCE_OPTIONS.find(
-                (o) => o.value === currentPref,
+              const currentAvail = currentVotes[candidate.id] || "unavailable";
+              const currentOption = AVAILABILITY_OPTIONS.find(
+                (o) => o.value === currentAvail,
               );
 
               return (
@@ -146,27 +179,27 @@ export function PreferenceVoting({
                         candidate.end_time,
                       )}
                     </span>
-                    {prefOption && currentPref && (
+                    {currentOption && currentAvail !== "unavailable" && (
                       <span
-                        className={`text-xs px-2 py-0.5 rounded ${prefOption.color}`}
+                        className={`text-xs px-2 py-0.5 rounded ${currentOption.color} ${currentOption.textColor}`}
                       >
-                        {prefOption.label}
+                        {currentOption.label}
                       </span>
                     )}
                   </div>
                   <div className="flex gap-1">
-                    {PREFERENCE_OPTIONS.map((opt) => {
-                      const isSelected = currentPref === opt.value;
+                    {AVAILABILITY_OPTIONS.map((opt) => {
+                      const isSelected = currentAvail === opt.value;
                       return (
                         <button
-                          key={opt.label}
+                          key={opt.value}
                           type="button"
                           onClick={() =>
-                            handlePreferenceClick(candidate.id, opt.value)
+                            handleAvailabilityClick(candidate.id, opt.value)
                           }
-                          className={`flex-1 py-2 px-1 rounded text-xs font-medium transition-all ${
+                          className={`flex-1 py-2 px-1 rounded text-sm font-medium transition-all ${
                             isSelected
-                              ? `${opt.color} ${opt.value ? "text-foreground" : "text-muted"} ring-2 ring-muted`
+                              ? `${opt.color} ${opt.textColor} ring-2 ring-offset-1 ring-muted`
                               : "bg-background text-muted hover:bg-border"
                           }`}
                         >

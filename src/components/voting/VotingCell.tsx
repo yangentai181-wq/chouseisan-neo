@@ -9,6 +9,7 @@ interface VotingCellProps {
 }
 
 const symbols: Record<Availability, string> = {
+  preferred: "◎",
   available: "○",
   maybe: "△",
   unavailable: "×",

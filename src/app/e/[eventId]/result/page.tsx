@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VotingGrid } from "@/components/voting";
 import { CalendarLinks } from "@/components/calendar";
-import { ShareButtons } from "@/components/share";
+import { HostOnlyShareButtons } from "@/components/share";
 import { ManageLink } from "@/components/event/ManageLink";
 import type { Candidate, VoteWithDetails, EventMode } from "@/types";
 
@@ -103,14 +103,15 @@ function findAvailableForAll(
   });
 }
 
-// 定例モード: 希望順位の加重平均でランキング
-// 第1希望=3pt, 第2希望=2pt, 第3希望=1pt
+// 定例モード: 4段階評価の加重平均でランキング
+// ◎希望=3pt, ○OK=2pt, △可能=1pt, ×不可=0pt
 interface CandidateRanking {
   candidate: Candidate;
   score: number;
-  firstChoiceCount: number;
-  secondChoiceCount: number;
-  thirdChoiceCount: number;
+  preferredCount: number; // ◎
+  availableCount: number; // ○
+  maybeCount: number; // △
+  unavailableCount: number; // ×
 }
 
 function calculatePreferenceRanking(
@@ -119,41 +120,45 @@ function calculatePreferenceRanking(
 ): CandidateRanking[] {
   const rankings: CandidateRanking[] = candidates.map((candidate) => {
     let score = 0;
-    let firstChoiceCount = 0;
-    let secondChoiceCount = 0;
-    let thirdChoiceCount = 0;
+    let preferredCount = 0;
+    let availableCount = 0;
+    let maybeCount = 0;
+    let unavailableCount = 0;
 
     for (const vote of votes) {
       const detail = vote.vote_details.find(
         (d) => d.candidate_id === candidate.id,
       );
-      if (detail?.preference === 1) {
+      if (detail?.availability === "preferred") {
         score += 3;
-        firstChoiceCount++;
-      } else if (detail?.preference === 2) {
+        preferredCount++;
+      } else if (detail?.availability === "available") {
         score += 2;
-        secondChoiceCount++;
-      } else if (detail?.preference === 3) {
+        availableCount++;
+      } else if (detail?.availability === "maybe") {
         score += 1;
-        thirdChoiceCount++;
+        maybeCount++;
+      } else {
+        unavailableCount++;
       }
     }
 
     return {
       candidate,
       score,
-      firstChoiceCount,
-      secondChoiceCount,
-      thirdChoiceCount,
+      preferredCount,
+      availableCount,
+      maybeCount,
+      unavailableCount,
     };
   });
 
-  // スコア降順、同点なら第1希望数で比較
+  // スコア降順、同点なら◎数→○数で比較
   return rankings.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    if (b.firstChoiceCount !== a.firstChoiceCount)
-      return b.firstChoiceCount - a.firstChoiceCount;
-    return b.secondChoiceCount - a.secondChoiceCount;
+    if (b.preferredCount !== a.preferredCount)
+      return b.preferredCount - a.preferredCount;
+    return b.availableCount - a.availableCount;
   });
 }
 
@@ -316,15 +321,18 @@ export default async function ResultPage({ params }: ResultPageProps) {
                           {ranking.score}pt
                         </span>
                       </div>
-                      <div className="flex gap-3 text-xs text-gray-500">
-                        <span className="bg-yellow-100 px-2 py-0.5 rounded">
-                          第1希望: {ranking.firstChoiceCount}
+                      <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                        <span className="bg-primary/20 text-primary px-2 py-0.5 rounded">
+                          ◎希望: {ranking.preferredCount}
                         </span>
-                        <span className="bg-yellow-50 px-2 py-0.5 rounded">
-                          第2希望: {ranking.secondChoiceCount}
+                        <span className="bg-success/20 text-success px-2 py-0.5 rounded">
+                          ○OK: {ranking.availableCount}
+                        </span>
+                        <span className="bg-warning/20 text-warning px-2 py-0.5 rounded">
+                          △可能: {ranking.maybeCount}
                         </span>
                         <span className="bg-gray-100 px-2 py-0.5 rounded">
-                          第3希望: {ranking.thirdChoiceCount}
+                          ×不可: {ranking.unavailableCount}
                         </span>
                       </div>
                     </div>
@@ -369,17 +377,15 @@ export default async function ResultPage({ params }: ResultPageProps) {
           <VotingGrid candidates={candidateList} votes={voteList} />
         </div>
 
-        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">共有</h2>
-          <ShareButtons
-            url={shareUrl}
-            title={event.title}
-            candidates={candidateList}
-            finalizedCandidate={
-              event.status === "finalized" ? selectedCandidate : null
-            }
-          />
-        </div>
+        <HostOnlyShareButtons
+          eventId={eventId}
+          url={shareUrl}
+          title={event.title}
+          candidates={candidateList}
+          finalizedCandidate={
+            event.status === "finalized" ? selectedCandidate : null
+          }
+        />
 
         <footer className="mt-6 text-center space-x-4">
           <Link

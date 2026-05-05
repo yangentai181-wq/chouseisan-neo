@@ -34,6 +34,7 @@ export const createEventSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式が不正です")
     .optional(),
+  host_pin: z.string().regex(/^\d{4}$/, "PINは4桁の数字で入力してください"),
   candidates: z
     .array(candidateSchema)
     .min(1, "候補日を1つ以上設定してください"),
@@ -48,7 +49,7 @@ export const createVoteSchema = z.object({
   votes: z.array(
     z.object({
       candidate_id: z.string(),
-      availability: z.enum(["available", "maybe", "unavailable"]),
+      availability: z.enum(["preferred", "available", "maybe", "unavailable"]),
       preference: z.number().int().min(1).max(3).nullable().optional(),
     }),
   ),
