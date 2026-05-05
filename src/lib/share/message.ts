@@ -110,24 +110,30 @@ export function generateFinalizedMessage(
   candidate: Candidate,
 ): string {
   const dateStr = formatCandidateForShare(candidate);
+  const isWeekday = WEEKDAY_DATES.includes(candidate.date);
 
-  // Google Calendar URL を生成
-  const calendarUrl = getGoogleCalendarUrl({
-    title,
-    date: candidate.date,
-    startTime: candidate.start_time || undefined,
-    endTime: candidate.end_time || undefined,
-  });
+  // 定例モード（曜日）の場合はカレンダーリンクなし
+  // 具体的な日付の場合のみGoogle Calendar URLを生成
+  let calendarSection = "";
+  if (!isWeekday) {
+    const calendarUrl = getGoogleCalendarUrl({
+      title,
+      date: candidate.date,
+      startTime: candidate.start_time || undefined,
+      endTime: candidate.end_time || undefined,
+    });
+    calendarSection = `
+▼ カレンダーに登録
+${calendarUrl}
+`;
+  }
 
   return `【決定】${title}
 
 日程が決定しました!
 
 📅 ${dateStr}
-
-▼ カレンダーに登録
-${calendarUrl}
-
+${calendarSection}
 ▼ 詳細はこちら
 ${url}`;
 }
