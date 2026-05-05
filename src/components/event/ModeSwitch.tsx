@@ -84,7 +84,7 @@ export function ModeSwitch({
         <span
           className={`text-sm ${isAdminMode ? "text-admin-foreground" : "text-muted"}`}
         >
-          編集モード
+          管理者
         </span>
         <div
           className={`relative w-11 h-6 rounded-full transition-colors ${

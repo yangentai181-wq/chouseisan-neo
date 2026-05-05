@@ -37,7 +37,7 @@ export function ShareButtons({
   const textClass = isAdminMode ? "text-admin-foreground" : "text-foreground";
   const [copied, setCopied] = useState<string | null>(null);
 
-  // 編集モード
+  // メッセージ編集状態
   const [editingShare, setEditingShare] = useState(false);
   const [editingReminder, setEditingReminder] = useState(false);
 
