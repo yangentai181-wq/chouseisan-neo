@@ -1,2 +1,2 @@
 export { ShareButtons } from "./ShareButtons";
-export { ShareMessageEditor } from "./ShareMessageEditor";
+export { HostOnlyShareButtons } from "./HostOnlyShareButtons";

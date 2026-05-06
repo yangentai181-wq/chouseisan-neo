@@ -13,8 +13,8 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
-          <h2 className="text-xl font-semibold mb-6">新規イベント作成</h2>
+        <div className="bg-card-bg rounded-xl shadow-sm border border-border p-6 md:p-8">
+          <h2 className="text-xl font-semibold mb-6">新規作成</h2>
           <EventCreateForm />
         </div>
 
