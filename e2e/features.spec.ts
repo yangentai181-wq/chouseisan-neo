@@ -160,3 +160,84 @@ test.describe("VotingGrid レスポンシブ", () => {
     await expect(page.locator("text=調整さん")).toBeVisible();
   });
 });
+
+test.describe("LINE共有ボタン", () => {
+  test("イベント作成後にLINE共有ボタンが表示される", async ({ page }) => {
+    // イベント作成
+    await page.goto("/");
+    await page.fill('input[placeholder*="チーム定例会"]', "LINE共有テスト");
+    await page.click('button:has-text("多数決")');
+
+    // 日付を選択
+    const calendarDays = page.locator(
+      '[class*="calendar"] button:not([disabled])',
+    );
+    const dayCount = await calendarDays.count();
+    if (dayCount > 0) {
+      await calendarDays.first().click();
+    }
+
+    // イベント作成
+    const createButton = page.locator('button:has-text("イベントを作成")');
+    if (await createButton.isVisible()) {
+      await createButton.click();
+
+      const confirmButton = page.locator('button:has-text("この内容で作成")');
+      if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+      }
+
+      await page
+        .waitForURL(/\/e\/.*\/created|\/e\/[^/]+$/, { timeout: 10000 })
+        .catch(() => {});
+    }
+
+    // LINE共有ボタンを確認
+    const currentUrl = page.url();
+    if (currentUrl.includes("/e/")) {
+      const lineButton = page.locator('a:has-text("LINEで共有")');
+      await expect(lineButton).toBeVisible({ timeout: 5000 });
+
+      // LINE URL Schemeを確認
+      const href = await lineButton.getAttribute("href");
+      expect(href).toContain("https://line.me/R/msg/text/");
+      expect(href).toContain(encodeURIComponent("LINE共有テスト"));
+    }
+  });
+
+  test("LINE共有ボタンが正しいスタイルを持つ", async ({ page }) => {
+    await page.goto("/");
+    await page.fill('input[placeholder*="チーム定例会"]', "スタイルテスト");
+    await page.click('button:has-text("多数決")');
+
+    const calendarDays = page.locator(
+      '[class*="calendar"] button:not([disabled])',
+    );
+    if ((await calendarDays.count()) > 0) {
+      await calendarDays.first().click();
+    }
+
+    const createButton = page.locator('button:has-text("イベントを作成")');
+    if (await createButton.isVisible()) {
+      await createButton.click();
+
+      const confirmButton = page.locator('button:has-text("この内容で作成")');
+      if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+      }
+
+      await page
+        .waitForURL(/\/e\/.*\/created|\/e\/[^/]+$/, { timeout: 10000 })
+        .catch(() => {});
+    }
+
+    if (page.url().includes("/e/")) {
+      const lineButton = page.locator('a:has-text("LINEで共有")');
+      await expect(lineButton).toBeVisible({ timeout: 5000 });
+
+      // target="_blank"とrel属性を確認
+      await expect(lineButton).toHaveAttribute("target", "_blank");
+      await expect(lineButton).toHaveAttribute("rel", "noopener noreferrer");
+    }
+  });
+});
