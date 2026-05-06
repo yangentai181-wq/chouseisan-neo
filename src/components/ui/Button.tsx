@@ -28,10 +28,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       primary:
         "bg-primary text-white hover:bg-primary-hover focus:ring-primary",
       secondary:
-        "bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500",
+        "bg-background text-foreground hover:bg-border focus:ring-muted",
       outline:
-        "border border-border bg-transparent hover:bg-gray-50 focus:ring-primary",
-      ghost: "bg-transparent hover:bg-gray-100 focus:ring-gray-500",
+        "border border-border bg-transparent hover:bg-background focus:ring-primary",
+      ghost: "bg-transparent hover:bg-background focus:ring-muted",
     };
 
     const sizes = {

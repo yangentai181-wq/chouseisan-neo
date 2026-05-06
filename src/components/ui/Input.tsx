@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-foreground mb-1"
           >
             {label}
           </label>
@@ -27,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           className={`
             w-full px-3 py-2 border rounded-lg
             focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-            disabled:bg-gray-100 disabled:cursor-not-allowed
+            disabled:bg-background disabled:cursor-not-allowed
             ${error ? "border-error" : "border-border"}
             ${className}
           `}

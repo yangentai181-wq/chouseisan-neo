@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui";
-import { CandidateDatePicker } from "./CandidateDatePicker";
+import { CandidateDatePicker, type OffsetMode } from "./CandidateDatePicker";
 import { ModeSelector } from "./ModeSelector";
 import type { CreateEventInput } from "@/lib/validation";
 import type { EventMode } from "@/types";
@@ -22,17 +22,53 @@ const DURATION_OPTIONS = [
   { value: 180, label: "3時間" },
 ];
 
+const WEEKDAY_DATES = [
+  "2000-01-02",
+  "2000-01-03",
+  "2000-01-04",
+  "2000-01-05",
+  "2000-01-06",
+  "2000-01-07",
+  "2000-01-08",
+];
+
+function formatDate(dateStr: string): string {
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  if (WEEKDAY_DATES.includes(dateStr)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(dateStr);
+    return `${weekdays[dayIndex]}曜日`;
+  }
+  const date = new Date(dateStr);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekday = weekdays[date.getDay()];
+  return `${month}/${day}(${weekday})`;
+}
+
+function formatTimeRange(start?: string, end?: string): string {
+  if (!start) return "終日";
+  const startHM = start.slice(0, 5);
+  if (!end) return startHM;
+  return `${startHM}〜${end.slice(0, 5)}`;
+}
+
 export function EventCreateForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<EventMode>("event");
+  const [isRegular, setIsRegular] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
+  const [hasDeadline, setHasDeadline] = useState(false);
+  const [responseDeadline, setResponseDeadline] = useState("");
+  const [hostPin, setHostPin] = useState("");
+  const [offsetMode, setOffsetMode] = useState<OffsetMode>("none");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleShowConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -46,14 +82,30 @@ export function EventCreateForm() {
       return;
     }
 
+    if (!/^\d{4}$/.test(hostPin)) {
+      setError("管理用PINは4桁の数字で入力してください");
+      return;
+    }
+
+    setShowConfirmation(true);
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
+    setError(null);
 
     try {
       const payload: CreateEventInput = {
         title: title.trim(),
         description: description.trim() || undefined,
         mode,
-        duration_minutes: mode === "meeting" ? durationMinutes : undefined,
+        duration_minutes:
+          mode === "meeting" || mode === "event" || mode === "regular"
+            ? durationMinutes
+            : undefined,
+        response_deadline:
+          hasDeadline && responseDeadline ? responseDeadline : undefined,
+        host_pin: hostPin,
         candidates,
       };
 
@@ -65,7 +117,7 @@ export function EventCreateForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "イベントの作成に失敗しました");
+        throw new Error(data.error || "作成に失敗しました");
       }
 
       const data = await res.json();
@@ -73,17 +125,153 @@ export function EventCreateForm() {
       // host_token を localStorage に保存
       localStorage.setItem(`host_token_${data.event_id}`, data.host_token);
 
-      // イベントページへリダイレクト
-      router.push(`/e/${data.event_id}`);
+      // 作成完了ページへリダイレクト
+      router.push(`/e/${data.event_id}/created`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
+      setShowConfirmation(false);
     } finally {
       setLoading(false);
     }
   };
 
+  // 確認画面
+  if (showConfirmation) {
+    const modeLabel =
+      mode === "event"
+        ? "多数決"
+        : mode === "regular"
+          ? "全員参加（定期開催）"
+          : "全員参加";
+
+    // 日付でグループ化
+    const candidatesByDate: Record<string, CandidateDate[]> = {};
+    candidates.forEach((c) => {
+      if (!candidatesByDate[c.date]) {
+        candidatesByDate[c.date] = [];
+      }
+      candidatesByDate[c.date].push(c);
+    });
+    const sortedDates = Object.keys(candidatesByDate).sort();
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-foreground mb-2">内容を確認</h2>
+          <p className="text-sm text-muted">以下の内容でイベントを作成します</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-error text-error px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        <div className="bg-background rounded-xl p-4 space-y-4">
+          <div>
+            <span className="text-xs text-muted">タイトル</span>
+            <p className="font-medium text-foreground">{title}</p>
+          </div>
+
+          {description && (
+            <div>
+              <span className="text-xs text-muted">説明</span>
+              <p className="text-foreground whitespace-pre-wrap">
+                {description}
+              </p>
+            </div>
+          )}
+
+          <div>
+            <span className="text-xs text-muted">タイプ</span>
+            <p className="text-foreground">{modeLabel}</p>
+          </div>
+
+          {(mode === "meeting" || mode === "event" || mode === "regular") && (
+            <div>
+              <span className="text-xs text-muted">
+                {mode === "meeting" || mode === "regular"
+                  ? "所要時間"
+                  : "1枠の長さ"}
+              </span>
+              <p className="text-foreground">
+                {
+                  DURATION_OPTIONS.find((d) => d.value === durationMinutes)
+                    ?.label
+                }
+                {offsetMode !== "none" && (
+                  <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                    {offsetMode === "30min"
+                      ? "30分ずつずらし"
+                      : "1時間ずつずらし"}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {hasDeadline && responseDeadline && (
+            <div>
+              <span className="text-xs text-muted">回答締め切り</span>
+              <p className="text-foreground">{formatDate(responseDeadline)}</p>
+            </div>
+          )}
+
+          <div>
+            <span className="text-xs text-muted">
+              候補日時（{candidates.length}件）
+            </span>
+            <div className="mt-2 space-y-2">
+              {sortedDates.map((date) => (
+                <div
+                  key={date}
+                  className="bg-white rounded-lg border border-border p-3"
+                >
+                  <div className="font-medium text-foreground mb-1">
+                    {formatDate(date)}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {candidatesByDate[date].map((c, idx) => (
+                      <span
+                        key={idx}
+                        className="text-sm bg-background px-2 py-1 rounded"
+                      >
+                        {formatTimeRange(c.start_time, c.end_time)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowConfirmation(false)}
+            className="flex-1"
+            size="lg"
+          >
+            戻る
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            loading={loading}
+            className="flex-1"
+            size="lg"
+          >
+            作成する
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleShowConfirmation} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-error text-error px-4 py-3 rounded-lg">
           {error}
@@ -91,10 +279,10 @@ export function EventCreateForm() {
       )}
 
       <Input
-        label="イベント名"
+        label="タイトル"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="例：歓迎会の日程調整"
+        placeholder="例：チーム定例会、懇親会、面接"
         required
         maxLength={100}
       />
@@ -108,12 +296,19 @@ export function EventCreateForm() {
         maxLength={1000}
       />
 
-      <ModeSelector value={mode} onChange={setMode} />
+      <ModeSelector
+        value={mode}
+        onChange={setMode}
+        isRegular={isRegular}
+        onRegularChange={setIsRegular}
+      />
 
-      {mode === "meeting" && (
+      {(mode === "meeting" || mode === "event" || mode === "regular") && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            会議の所要時間
+          <label className="block text-sm font-medium text-foreground">
+            {mode === "meeting" || mode === "regular"
+              ? "会議の所要時間"
+              : "1枠の長さ"}
           </label>
           <div className="flex flex-wrap gap-2">
             {DURATION_OPTIONS.map((option) => (
@@ -124,7 +319,7 @@ export function EventCreateForm() {
                 className={`px-4 py-2 rounded-lg border-2 text-sm transition-all ${
                   durationMinutes === option.value
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-gray-200 hover:border-gray-300"
+                    : "border-border hover:border-muted"
                 }`}
               >
                 {option.label}
@@ -132,13 +327,49 @@ export function EventCreateForm() {
             ))}
           </div>
           <p className="text-xs text-muted">
-            この時間分、全員が空いている枠を探します
+            {mode === "meeting" || mode === "regular"
+              ? "この時間分、全員が空いている枠を探します"
+              : "候補日時の時間枠を指定します（例：10:00〜11:00）"}
           </p>
+
+          {/* 開始時刻ずらしオプション */}
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              開始時刻のずらし方
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "none", label: "ずらさない" },
+                { value: "30min", label: "30分ずつ" },
+                { value: "60min", label: "1時間ずつ" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setOffsetMode(option.value as OffsetMode)}
+                  className={`px-4 py-2 rounded-lg border-2 text-sm transition-all ${
+                    offsetMode === option.value
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted">
+              {offsetMode === "none"
+                ? "時間枠は連続して生成されます（例: 10:00-11:00, 11:00-12:00）"
+                : offsetMode === "30min"
+                  ? "30分ずつずらして生成（例: 18:00-21:00, 18:30-21:30, 19:00-22:00）"
+                  : "1時間ずつずらして生成（例: 18:00-21:00, 19:00-22:00, 20:00-23:00）"}
+            </p>
+          </div>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           候補日時
         </label>
         <CandidateDatePicker
@@ -146,11 +377,60 @@ export function EventCreateForm() {
           onChange={setCandidates}
           mode={mode}
           durationMinutes={durationMinutes}
+          offsetMode={offsetMode}
         />
       </div>
 
+      <div className="space-y-3">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hasDeadline}
+            onChange={(e) => setHasDeadline(e.target.checked)}
+            className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+          />
+          <span className="text-sm font-medium text-foreground">
+            回答締め切りを設定する
+          </span>
+        </label>
+        {hasDeadline && (
+          <div className="ml-8">
+            <input
+              type="date"
+              value={responseDeadline}
+              onChange={(e) => setResponseDeadline(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <p className="text-xs text-muted mt-1">
+              この日までに回答をお願いする文面を自動生成します
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-foreground">
+          管理用PIN（4桁の数字）
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          value={hostPin}
+          onChange={(e) => setHostPin(e.target.value.replace(/\D/g, ""))}
+          placeholder="1234"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-center text-2xl tracking-widest"
+          required
+        />
+        <p className="text-xs text-muted">
+          管理用URLを紛失した場合、このPINで管理画面にアクセスできます
+        </p>
+      </div>
+
       <Button type="submit" loading={loading} className="w-full" size="lg">
-        イベントを作成
+        作成する
       </Button>
     </form>
   );
