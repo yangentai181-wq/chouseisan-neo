@@ -80,3 +80,12 @@ export interface EventView {
   candidates: Candidate[];
   votes: VoteWithDetails[];
 }
+
+// 参加者グループ
+export interface ParticipantGroup {
+  id: string;
+  name: string; // グループ名 (例: "開発チーム")
+  members: string[]; // メンバー名一覧
+  created_at: string;
+  updated_at: string;
+}
