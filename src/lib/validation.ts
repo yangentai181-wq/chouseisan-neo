@@ -30,6 +30,7 @@ export const createEventSchema = z.object({
     .min(15, "所要時間は15分以上で設定してください")
     .max(480, "所要時間は8時間以内で設定してください")
     .optional(),
+  is_anonymous: z.boolean().default(false),
   candidates: z
     .array(candidateSchema)
     .min(1, "候補日を1つ以上設定してください"),

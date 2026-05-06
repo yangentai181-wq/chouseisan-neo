@@ -19,6 +19,7 @@ interface VotingFormProps {
   votes: VoteWithDetails[];
   mode: EventMode;
   durationMinutes?: number | null;
+  isAnonymous?: boolean;
 }
 
 const availabilityOrder: Availability[] = ["unavailable", "available", "maybe"];
@@ -106,6 +107,7 @@ export function VotingForm({
   candidates,
   votes,
   mode,
+  isAnonymous = false,
 }: VotingFormProps) {
   const router = useRouter();
 
@@ -246,6 +248,7 @@ export function VotingForm({
             currentVotes={currentVotes}
             onCellClick={handleCellClick}
             isEditing={true}
+            isAnonymous={isAnonymous}
           />
           <div className="text-sm text-muted">
             <p>○ = 参加可能 / △ = 微妙 / × = 参加不可</p>

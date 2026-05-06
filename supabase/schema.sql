@@ -8,6 +8,7 @@ CREATE TABLE events (
   description TEXT,
   mode TEXT NOT NULL DEFAULT 'event',     -- 'regular' | 'meeting' | 'event'
   duration_minutes INTEGER,               -- 全員集合モード用（会議の所要時間）
+  is_anonymous BOOLEAN NOT NULL DEFAULT FALSE, -- 匿名投票モード
   status TEXT NOT NULL DEFAULT 'open',    -- 'open' | 'finalized'
   finalized_candidate_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),

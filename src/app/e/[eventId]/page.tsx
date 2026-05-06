@@ -43,7 +43,7 @@ export default async function EventPage({ params }: EventPageProps) {
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select(
-      "id, title, description, mode, duration_minutes, status, finalized_candidate_id, created_at, updated_at",
+      "id, title, description, mode, duration_minutes, is_anonymous, status, finalized_candidate_id, created_at, updated_at",
     )
     .eq("id", eventId)
     .single();
@@ -102,6 +102,7 @@ export default async function EventPage({ params }: EventPageProps) {
             votes={votes || []}
             mode={event.mode || "event"}
             durationMinutes={event.duration_minutes}
+            isAnonymous={event.is_anonymous}
           />
         </div>
 
