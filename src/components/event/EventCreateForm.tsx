@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui";
 import { CandidateDatePicker } from "./CandidateDatePicker";
 import { ModeSelector } from "./ModeSelector";
+import { TemplateSelector, SaveTemplateModal } from "@/components/template";
 import type { CreateEventInput } from "@/lib/validation";
 import type { EventMode } from "@/types";
 
@@ -31,6 +32,33 @@ export function EventCreateForm() {
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  const handleTemplateSelect = (template: {
+    title: string;
+    description: string;
+    mode: EventMode;
+    duration_minutes: number | null;
+    candidates: {
+      date: string;
+      start_time: string | null;
+      end_time: string | null;
+    }[];
+  }) => {
+    setTitle(template.title);
+    setDescription(template.description);
+    setMode(template.mode);
+    if (template.duration_minutes) {
+      setDurationMinutes(template.duration_minutes);
+    }
+    setCandidates(
+      template.candidates.map((c) => ({
+        date: c.date,
+        start_time: c.start_time || undefined,
+        end_time: c.end_time || undefined,
+      })),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +112,8 @@ export function EventCreateForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <TemplateSelector onSelect={handleTemplateSelect} />
+
       {error && (
         <div className="bg-red-50 border border-error text-error px-4 py-3 rounded-lg">
           {error}
@@ -149,9 +179,50 @@ export function EventCreateForm() {
         />
       </div>
 
-      <Button type="submit" loading={loading} className="w-full" size="lg">
-        イベントを作成
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button type="submit" loading={loading} className="w-full" size="lg">
+          イベントを作成
+        </Button>
+
+        {title.trim() && candidates.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowSaveTemplate(true)}
+            className="text-sm text-teal-600 hover:text-teal-700 flex items-center justify-center gap-1"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+              />
+            </svg>
+            テンプレートとして保存
+          </button>
+        )}
+      </div>
+
+      <SaveTemplateModal
+        isOpen={showSaveTemplate}
+        onClose={() => setShowSaveTemplate(false)}
+        eventData={{
+          title,
+          description,
+          mode,
+          duration_minutes: mode === "meeting" ? durationMinutes : null,
+          candidates: candidates.map((c) => ({
+            date: c.date,
+            start_time: c.start_time || null,
+            end_time: c.end_time || null,
+          })),
+        }}
+      />
     </form>
   );
 }
