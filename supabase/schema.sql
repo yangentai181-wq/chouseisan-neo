@@ -30,6 +30,7 @@ CREATE TABLE votes (
   event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   participant_name TEXT NOT NULL,
   participant_token TEXT NOT NULL,        -- 編集用
+  comment TEXT,                           -- 全体コメント
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(event_id, participant_name)
@@ -42,6 +43,7 @@ CREATE TABLE vote_details (
   candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
   availability TEXT NOT NULL,             -- 'available' | 'maybe' | 'unavailable'
   preference INTEGER,                     -- 定例モード: 1=第1希望, 2=第2希望, 3=第3希望, null=希望なし
+  note TEXT,                              -- 候補別コメント
   UNIQUE(vote_id, candidate_id),
   CONSTRAINT valid_preference CHECK (preference IS NULL OR (preference >= 1 AND preference <= 3))
 );

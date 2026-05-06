@@ -68,12 +68,14 @@ export default async function EventPage({ params }: EventPageProps) {
       event_id,
       participant_name,
       participant_token,
+      comment,
       vote_details (
         id,
         vote_id,
         candidate_id,
         availability,
-        preference
+        preference,
+        note
       )
     `,
     )
