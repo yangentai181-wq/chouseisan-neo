@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { VotingForm } from "@/components/voting";
 import { ShareButtons } from "@/components/share/ShareButtons";
+import { ReminderSettings, InstallPrompt } from "@/components/pwa";
 import type { Metadata } from "next";
 
 interface EventPageProps {
@@ -105,7 +106,7 @@ export default async function EventPage({ params }: EventPageProps) {
           />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">共有</h2>
           <ShareButtons
             url={shareUrl}
@@ -113,6 +114,13 @@ export default async function EventPage({ params }: EventPageProps) {
             candidates={candidates || []}
           />
         </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-lg font-semibold mb-4">通知</h2>
+          <ReminderSettings eventId={eventId} eventTitle={event.title} />
+        </div>
+
+        <InstallPrompt />
 
         <footer className="mt-6 text-center space-x-4">
           <Link

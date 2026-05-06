@@ -46,23 +46,38 @@ CREATE TABLE vote_details (
   CONSTRAINT valid_preference CHECK (preference IS NULL OR (preference >= 1 AND preference <= 3))
 );
 
+-- プッシュ通知購読
+CREATE TABLE push_subscriptions (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL,
+  keys_p256dh TEXT NOT NULL,
+  keys_auth TEXT NOT NULL,
+  timing TEXT NOT NULL DEFAULT '1d',  -- '1h' | '1d' | '3d'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, endpoint)
+);
+
 -- インデックス
 CREATE INDEX idx_candidates_event_id ON candidates(event_id);
 CREATE INDEX idx_votes_event_id ON votes(event_id);
 CREATE INDEX idx_vote_details_vote_id ON vote_details(vote_id);
 CREATE INDEX idx_vote_details_candidate_id ON vote_details(candidate_id);
+CREATE INDEX idx_push_subscriptions_event_id ON push_subscriptions(event_id);
 
 -- RLS (Row Level Security)
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vote_details ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- anon ロールに全権限（認証なしアプリのため）
 CREATE POLICY "Allow all for events" ON events FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for candidates" ON candidates FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for votes" ON votes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for vote_details" ON vote_details FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for push_subscriptions" ON push_subscriptions FOR ALL USING (true) WITH CHECK (true);
 
 -- Realtime 有効化
 ALTER PUBLICATION supabase_realtime ADD TABLE votes;
