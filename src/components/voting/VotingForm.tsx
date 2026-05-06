@@ -6,6 +6,7 @@ import { Button, Input } from "@/components/ui";
 import { VotingGrid } from "./VotingGrid";
 import { TimeBlockVoting } from "./TimeBlockVoting";
 import { PreferenceVoting } from "./PreferenceVoting";
+import { GroupSelector, SaveToGroupModal } from "@/components/group";
 import type {
   Candidate,
   VoteWithDetails,
@@ -126,6 +127,7 @@ export function VotingForm({
   >(initialState.preferences);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSaveToGroup, setShowSaveToGroup] = useState(false);
 
   const handleCellClick = (candidateId: string) => {
     setCurrentVotes((prev) => ({
@@ -254,22 +256,38 @@ export function VotingForm({
         </>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-end">
-        <div className="flex-1">
-          <Input
-            label="お名前"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="名前を入力"
-            required
-            maxLength={50}
-            disabled={!!participantToken}
+      <div className="space-y-2">
+        {!participantToken && (
+          <GroupSelector
+            currentName={name}
+            onSelectMember={(selectedName) => setName(selectedName)}
+            onSaveToGroup={() => setShowSaveToGroup(true)}
           />
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <Input
+              label="お名前"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="名前を入力"
+              required
+              maxLength={50}
+              disabled={!!participantToken}
+            />
+          </div>
+          <Button type="submit" loading={loading}>
+            {participantToken ? "投票を更新" : "投票する"}
+          </Button>
         </div>
-        <Button type="submit" loading={loading}>
-          {participantToken ? "投票を更新" : "投票する"}
-        </Button>
       </div>
+
+      <SaveToGroupModal
+        isOpen={showSaveToGroup}
+        onClose={() => setShowSaveToGroup(false)}
+        memberName={name.trim()}
+      />
     </form>
   );
 }
