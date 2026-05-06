@@ -28,6 +28,7 @@ export function EventCreateForm() {
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<EventMode>("event");
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function EventCreateForm() {
         description: description.trim() || undefined,
         mode,
         duration_minutes: mode === "meeting" ? durationMinutes : undefined,
+        is_anonymous: isAnonymous,
         candidates,
       };
 
@@ -109,6 +111,24 @@ export function EventCreateForm() {
       />
 
       <ModeSelector value={mode} onChange={setMode} />
+
+      <div className="flex items-center gap-3">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isAnonymous}
+            onChange={(e) => setIsAnonymous(e.target.checked)}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+        </label>
+        <div>
+          <span className="text-sm font-medium text-gray-700">匿名投票</span>
+          <p className="text-xs text-muted">
+            参加者の名前を他の人に表示しません
+          </p>
+        </div>
+      </div>
 
       {mode === "meeting" && (
         <div className="space-y-2">

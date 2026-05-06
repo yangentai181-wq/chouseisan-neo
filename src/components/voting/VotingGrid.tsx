@@ -8,6 +8,7 @@ interface VotingGridProps {
   currentVotes?: Record<string, Availability>;
   onCellClick?: (candidateId: string) => void;
   isEditing?: boolean;
+  isAnonymous?: boolean;
 }
 
 const symbols: Record<Availability, string> = {
@@ -56,6 +57,7 @@ export function VotingGrid({
   currentVotes,
   onCellClick,
   isEditing = false,
+  isAnonymous = false,
 }: VotingGridProps) {
   return (
     <div className="overflow-x-auto">
@@ -65,12 +67,12 @@ export function VotingGrid({
             <th className="p-2 border border-border bg-gray-50 text-left min-w-[150px]">
               日程
             </th>
-            {votes.map((vote) => (
+            {votes.map((vote, index) => (
               <th
                 key={vote.id}
                 className="p-2 border border-border bg-gray-50 text-center min-w-[60px]"
               >
-                {vote.participant_name}
+                {isAnonymous ? `参加者${index + 1}` : vote.participant_name}
               </th>
             ))}
             {isEditing && (

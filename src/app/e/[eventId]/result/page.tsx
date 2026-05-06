@@ -136,7 +136,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select(
-      "id, title, description, mode, duration_minutes, status, finalized_candidate_id, created_at, updated_at",
+      "id, title, description, mode, duration_minutes, is_anonymous, status, finalized_candidate_id, created_at, updated_at",
     )
     .eq("id", eventId)
     .single();
@@ -346,7 +346,11 @@ export default async function ResultPage({ params }: ResultPageProps) {
           <h2 className="text-lg font-semibold mb-4">
             {mode === "meeting" ? "回答一覧" : "投票結果"}
           </h2>
-          <VotingGrid candidates={candidateList} votes={voteList} />
+          <VotingGrid
+            candidates={candidateList}
+            votes={voteList}
+            isAnonymous={event.is_anonymous}
+          />
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
