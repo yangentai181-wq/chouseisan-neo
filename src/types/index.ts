@@ -80,3 +80,25 @@ export interface EventView {
   candidates: Candidate[];
   votes: VoteWithDetails[];
 }
+
+// Template types
+export interface EventTemplate {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  mode: EventMode;
+  duration_minutes: number | null;
+  // 候補日パターン（相対的な日時指定）
+  candidate_pattern: CandidatePattern[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CandidatePattern {
+  // 曜日指定 (0=日, 1=月, ..., 6=土) または相対日数 (0=今日, 1=明日, ...)
+  day_type: "weekday" | "relative";
+  day_value: number;
+  start_time: string | null; // HH:mm format
+  end_time: string | null;
+}
