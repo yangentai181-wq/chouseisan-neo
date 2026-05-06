@@ -6,6 +6,7 @@ import { Button, Input } from "@/components/ui";
 import { VotingGrid } from "./VotingGrid";
 import { TimeBlockVoting } from "./TimeBlockVoting";
 import { PreferenceVoting } from "./PreferenceVoting";
+import { CalendarImport } from "./CalendarImport";
 import type {
   Candidate,
   VoteWithDetails,
@@ -159,6 +160,13 @@ export function VotingForm({
     }));
   };
 
+  const handleCalendarImport = (conflicts: Record<string, Availability>) => {
+    setCurrentVotes((prev) => ({
+      ...prev,
+      ...conflicts,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -253,6 +261,8 @@ export function VotingForm({
           </div>
         </>
       )}
+
+      <CalendarImport candidates={candidates} onImport={handleCalendarImport} />
 
       <div className="flex flex-col sm:flex-row gap-4 items-end">
         <div className="flex-1">
