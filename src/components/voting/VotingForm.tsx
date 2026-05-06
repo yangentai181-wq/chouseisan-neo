@@ -210,8 +210,8 @@ export function VotingForm({
       );
       localStorage.setItem(`participant_name_${eventId}`, name.trim());
 
-      // ページをリロードして最新の投票を表示
-      router.refresh();
+      // 投票完了画面へ遷移
+      router.push(`/e/${eventId}/complete`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
     } finally {

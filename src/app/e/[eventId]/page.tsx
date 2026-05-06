@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { VotingForm } from "@/components/voting";
-import { ShareButtons } from "@/components/share/ShareButtons";
+import { EventLandingClient } from "./EventLandingClient";
 import type { Metadata } from "next";
 
 interface EventPageProps {
@@ -42,9 +41,7 @@ export default async function EventPage({ params }: EventPageProps) {
   // イベント取得
   const { data: event, error: eventError } = await supabase
     .from("events")
-    .select(
-      "id, title, description, mode, duration_minutes, status, finalized_candidate_id, created_at, updated_at",
-    )
+    .select("id, title, description, mode")
     .eq("id", eventId)
     .single();
 
@@ -52,75 +49,57 @@ export default async function EventPage({ params }: EventPageProps) {
     notFound();
   }
 
-  // 候補日取得
-  const { data: candidates } = await supabase
-    .from("candidates")
-    .select("*")
-    .eq("event_id", eventId)
-    .order("position", { ascending: true });
-
-  // 投票取得
+  // 投票者一覧取得
   const { data: votes } = await supabase
     .from("votes")
-    .select(
-      `
-      id,
-      event_id,
-      participant_name,
-      participant_token,
-      vote_details (
-        id,
-        vote_id,
-        candidate_id,
-        availability,
-        preference
-      )
-    `,
-    )
+    .select("id, participant_name, participant_token")
     .eq("event_id", eventId);
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const shareUrl = `${baseUrl}/e/${eventId}`;
+  const modeLabel =
+    event.mode === "meeting"
+      ? "全員集合モード"
+      : event.mode === "regular"
+        ? "定例モード"
+        : "イベントモード";
 
   return (
-    <main className="flex-1 flex flex-col items-center p-4">
-      <div className="w-full max-w-4xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+    <main className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
             {event.title}
           </h1>
           {event.description && (
-            <p className="text-muted">{event.description}</p>
+            <p className="text-muted text-center mb-2">{event.description}</p>
           )}
-        </header>
+          <p className="text-xs text-center text-gray-400 mb-6">{modeLabel}</p>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">日程調整</h2>
-          <VotingForm
-            eventId={eventId}
-            candidates={candidates || []}
-            votes={votes || []}
-            mode={event.mode || "event"}
-            durationMinutes={event.duration_minutes}
-          />
+          <div className="space-y-3">
+            <Link
+              href={`/e/${eventId}/vote`}
+              className="block w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-primary/90 transition-colors text-center"
+            >
+              新しく回答する
+            </Link>
+
+            <EventLandingClient eventId={eventId} participants={votes || []} />
+
+            <Link
+              href={`/e/${eventId}/result`}
+              className="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 transition-colors text-center"
+            >
+              結果をみる
+            </Link>
+          </div>
+
+          {votes && votes.length > 0 && (
+            <p className="text-xs text-center text-muted mt-4">
+              {votes.length}人が回答済み
+            </p>
+          )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">共有</h2>
-          <ShareButtons
-            url={shareUrl}
-            title={event.title}
-            candidates={candidates || []}
-          />
-        </div>
-
-        <footer className="mt-6 text-center space-x-4">
-          <Link
-            href={`/e/${eventId}/result`}
-            className="text-primary hover:underline text-sm"
-          >
-            結果を見る
-          </Link>
+        <footer className="text-center">
           <Link href="/" className="text-primary hover:underline text-sm">
             新しいイベントを作成
           </Link>
