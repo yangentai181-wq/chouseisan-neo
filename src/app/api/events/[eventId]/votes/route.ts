@@ -19,7 +19,7 @@ export async function POST(
       );
     }
 
-    const { participant_name, participant_token, votes } = parsed.data;
+    const { participant_name, participant_token, comment, votes } = parsed.data;
     const supabase = await createClient();
 
     // イベント存在確認
@@ -68,6 +68,12 @@ export async function POST(
       voteId = existingVote.id;
       newParticipantToken = existingVote.participant_token;
 
+      // 既存の投票のコメントを更新
+      await supabase
+        .from("votes")
+        .update({ comment: comment || null })
+        .eq("id", voteId);
+
       // 既存の投票詳細を削除
       await supabase.from("vote_details").delete().eq("vote_id", voteId);
     } else {
@@ -80,6 +86,7 @@ export async function POST(
         event_id: eventId,
         participant_name,
         participant_token: newParticipantToken,
+        comment: comment || null,
       });
 
       if (voteError) {

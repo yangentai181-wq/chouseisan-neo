@@ -41,11 +41,19 @@ export const createVoteSchema = z.object({
     .min(1, "名前を入力してください")
     .max(50, "名前は50文字以内で入力してください"),
   participant_token: z.string().optional(),
+  comment: z
+    .string()
+    .max(500, "コメントは500文字以内で入力してください")
+    .optional(),
   votes: z.array(
     z.object({
       candidate_id: z.string(),
       availability: z.enum(["available", "maybe", "unavailable"]),
       preference: z.number().int().min(1).max(3).nullable().optional(),
+      note: z
+        .string()
+        .max(200, "メモは200文字以内で入力してください")
+        .optional(),
     }),
   ),
 });

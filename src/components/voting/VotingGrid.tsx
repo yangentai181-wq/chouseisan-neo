@@ -70,7 +70,32 @@ export function VotingGrid({
                 key={vote.id}
                 className="p-2 border border-border bg-gray-50 text-center min-w-[60px]"
               >
-                {vote.participant_name}
+                <div className="flex items-center justify-center gap-1">
+                  <span>{vote.participant_name}</span>
+                  {vote.comment && (
+                    <span
+                      className="relative group cursor-help"
+                      title={vote.comment}
+                    >
+                      <svg
+                        className="w-4 h-4 text-muted"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap max-w-[200px] text-wrap z-10 pointer-events-none">
+                        {vote.comment}
+                      </span>
+                    </span>
+                  )}
+                </div>
               </th>
             ))}
             {isEditing && (

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Textarea } from "@/components/ui";
 import { VotingGrid } from "./VotingGrid";
 import { TimeBlockVoting } from "./TimeBlockVoting";
 import { PreferenceVoting } from "./PreferenceVoting";
@@ -31,6 +31,7 @@ function getNextAvailability(current: Availability): Availability {
 interface InitialState {
   votes: Record<string, Availability>;
   preferences: Record<string, number | null>;
+  comment: string;
 }
 
 function getInitialState(
@@ -73,7 +74,11 @@ function getInitialState(
           restoredPrefs[c.id] = null;
         }
       });
-      return { votes: restoredVotes, preferences: restoredPrefs };
+      return {
+        votes: restoredVotes,
+        preferences: restoredPrefs,
+        comment: existingVote.comment ?? "",
+      };
     }
   }
 
@@ -86,7 +91,7 @@ function getInitialState(
     initialVotes[c.id] = defaultValue;
     initialPrefs[c.id] = null;
   });
-  return { votes: initialVotes, preferences: initialPrefs };
+  return { votes: initialVotes, preferences: initialPrefs, comment: "" };
 }
 
 function getStoredValues(eventId: string): {
@@ -124,6 +129,7 @@ export function VotingForm({
   const [currentPreferences, setCurrentPreferences] = useState<
     Record<string, number | null>
   >(initialState.preferences);
+  const [comment, setComment] = useState(initialState.comment);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,6 +196,7 @@ export function VotingForm({
         body: JSON.stringify({
           participant_name: name.trim(),
           participant_token: participantToken ?? undefined,
+          comment: comment.trim() || undefined,
           votes: voteData,
         }),
       });
@@ -253,6 +260,17 @@ export function VotingForm({
           </div>
         </>
       )}
+
+      <div>
+        <Textarea
+          label="コメント（任意）"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="「この日は午後なら参加できます」など"
+          rows={2}
+          maxLength={500}
+        />
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-end">
         <div className="flex-1">

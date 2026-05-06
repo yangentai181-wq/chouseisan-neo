@@ -28,6 +28,7 @@ export interface Vote {
   event_id: string;
   participant_name: string;
   participant_token: string;
+  comment: string | null;
 }
 
 export type Availability = "available" | "maybe" | "unavailable";
@@ -38,6 +39,7 @@ export interface VoteDetail {
   candidate_id: string;
   availability: Availability;
   preference: number | null; // 定例モード: 1=第1希望, 2=第2希望, 3=第3希望, null=希望なし
+  note: string | null; // 候補別コメント
 }
 
 // API types
@@ -60,9 +62,11 @@ export interface CreateEventResponse {
 export interface CreateVoteRequest {
   participant_name: string;
   participant_token?: string; // for editing existing vote
+  comment?: string; // 全体コメント
   votes: {
     candidate_id: string;
     availability: Availability;
+    note?: string; // 候補別コメント
   }[];
 }
 
