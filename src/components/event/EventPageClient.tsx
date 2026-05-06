@@ -133,6 +133,7 @@ export function EventPageClient({
         eventId={eventId}
         isAdminMode={isAdminMode}
         onModeChange={handleModeChange}
+        votes={votes}
       />
     </main>
   );

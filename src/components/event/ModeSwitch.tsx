@@ -27,7 +27,9 @@ export function ModeSwitch({
       onModeChange(false);
     } else {
       // Participant → Admin
-      if (hasHostToken) {
+      // localStorage を直接チェック（SSR hydration の遅延を回避）
+      const storedHostToken = localStorage.getItem(`host_token_${eventId}`);
+      if (storedHostToken || hasHostToken) {
         // 既に認証済み
         onModeChange(true);
       } else {

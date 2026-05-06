@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ModeSwitch } from "./ModeSwitch";
+import type { VoteWithDetails } from "@/types";
 
 interface ParticipantActionsProps {
   eventId: string;
   isAdminMode?: boolean;
   onModeChange?: (isAdmin: boolean) => void;
+  votes?: VoteWithDetails[];
 }
 
 // localStorageから初期状態を取得するヘルパー
@@ -29,13 +32,16 @@ export function ParticipantActions({
   eventId,
   isAdminMode = false,
   onModeChange,
+  votes = [],
 }: ParticipantActionsProps) {
+  const router = useRouter();
   const initialState = useMemo(() => getInitialState(eventId), [eventId]);
   const [hasVoted, setHasVoted] = useState(initialState.hasVoted);
   const [participantName, setParticipantName] = useState<string | null>(
     initialState.participantName,
   );
   const [hasHostToken, setHasHostToken] = useState(initialState.hasHostToken);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // SSR後にlocalStorageから再取得（hydrationで必要）
   useEffect(() => {
@@ -59,6 +65,19 @@ export function ParticipantActions({
     },
     [onModeChange],
   );
+
+  const handleSelectParticipant = (vote: VoteWithDetails) => {
+    // 選択した参加者のトークンと名前をlocalStorageに設定
+    localStorage.setItem(
+      `participant_token_${eventId}`,
+      vote.participant_token,
+    );
+    localStorage.setItem(`participant_name_${eventId}`, vote.participant_name);
+    setShowEditModal(false);
+    // ページをリロードして編集モードを反映
+    router.refresh();
+    window.location.reload();
+  };
 
   // propsから直接使用（ローカル状態で管理しない）
   const localAdminMode = isAdminMode;
@@ -96,30 +115,58 @@ export function ParticipantActions({
 
         {/* アクションボタン */}
         <div className="flex gap-2">
-          {/* 回答/修正ボタン - ページトップへスクロール */}
-          <button
-            type="button"
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-all bg-primary text-white hover:bg-primary/90 active:scale-98"
-          >
-            {hasVoted ? "回答を修正" : "回答する"}
-          </button>
-
-          {/* 結果を見る */}
+          {votes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowEditModal(true)}
+              className="flex-1 py-3 px-4 rounded-lg font-medium text-sm text-center transition-all active:scale-98 bg-card-bg border border-border text-foreground hover:bg-background"
+            >
+              回答を修正
+            </button>
+          )}
           <Link
             href={`/e/${eventId}/result`}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm text-center transition-all border active:scale-98 ${
-              localAdminMode
-                ? "bg-admin-bg text-admin-foreground border-admin-border hover:bg-admin-card-bg"
-                : "bg-background text-foreground border-border hover:bg-border"
-            }`}
+            className="flex-1 py-3 px-4 rounded-lg font-medium text-sm text-center transition-all active:scale-98 bg-primary text-white hover:bg-primary/90"
           >
             結果を見る
           </Link>
         </div>
       </div>
+
+      {/* 参加者選択モーダル */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-card-bg rounded-xl shadow-xl border border-border p-6 max-w-sm w-full max-h-[80vh] flex flex-col">
+            <h2 className="text-lg font-bold text-foreground mb-2 text-center">
+              回答を修正
+            </h2>
+            <p className="text-muted mb-4 text-center text-sm">
+              修正する回答者を選んでください
+            </p>
+
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {votes.map((vote) => (
+                <button
+                  key={vote.id}
+                  type="button"
+                  onClick={() => handleSelectParticipant(vote)}
+                  className="w-full px-4 py-3 text-left rounded-lg border border-border hover:bg-background transition-colors"
+                >
+                  <span className="font-medium">{vote.participant_name}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="mt-4 w-full py-2 text-sm text-muted hover:text-foreground transition-colors"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

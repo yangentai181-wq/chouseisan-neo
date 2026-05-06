@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui";
-import { CandidateDatePicker } from "./CandidateDatePicker";
+import { CandidateDatePicker, type OffsetMode } from "./CandidateDatePicker";
 import { ModeSelector } from "./ModeSelector";
 import type { CreateEventInput } from "@/lib/validation";
 import type { EventMode } from "@/types";
@@ -57,11 +57,13 @@ export function EventCreateForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<EventMode>("event");
+  const [isRegular, setIsRegular] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
   const [hasDeadline, setHasDeadline] = useState(false);
   const [responseDeadline, setResponseDeadline] = useState("");
   const [hostPin, setHostPin] = useState("");
+  const [offsetMode, setOffsetMode] = useState<OffsetMode>("none");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -98,7 +100,9 @@ export function EventCreateForm() {
         description: description.trim() || undefined,
         mode,
         duration_minutes:
-          mode === "meeting" || mode === "event" ? durationMinutes : undefined,
+          mode === "meeting" || mode === "event" || mode === "regular"
+            ? durationMinutes
+            : undefined,
         response_deadline:
           hasDeadline && responseDeadline ? responseDeadline : undefined,
         host_pin: hostPin,
@@ -135,10 +139,10 @@ export function EventCreateForm() {
   if (showConfirmation) {
     const modeLabel =
       mode === "event"
-        ? "イベント"
-        : mode === "meeting"
-          ? "ミーティング"
-          : "定期開催";
+        ? "多数決"
+        : mode === "regular"
+          ? "全員参加（定期開催）"
+          : "全員参加";
 
     // 日付でグループ化
     const candidatesByDate: Record<string, CandidateDate[]> = {};
@@ -183,16 +187,25 @@ export function EventCreateForm() {
             <p className="text-foreground">{modeLabel}</p>
           </div>
 
-          {(mode === "meeting" || mode === "event") && (
+          {(mode === "meeting" || mode === "event" || mode === "regular") && (
             <div>
               <span className="text-xs text-muted">
-                {mode === "meeting" ? "所要時間" : "1枠の長さ"}
+                {mode === "meeting" || mode === "regular"
+                  ? "所要時間"
+                  : "1枠の長さ"}
               </span>
               <p className="text-foreground">
                 {
                   DURATION_OPTIONS.find((d) => d.value === durationMinutes)
                     ?.label
                 }
+                {offsetMode !== "none" && (
+                  <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                    {offsetMode === "30min"
+                      ? "30分ずつずらし"
+                      : "1時間ずつずらし"}
+                  </span>
+                )}
               </p>
             </div>
           )}
@@ -283,12 +296,19 @@ export function EventCreateForm() {
         maxLength={1000}
       />
 
-      <ModeSelector value={mode} onChange={setMode} />
+      <ModeSelector
+        value={mode}
+        onChange={setMode}
+        isRegular={isRegular}
+        onRegularChange={setIsRegular}
+      />
 
-      {(mode === "meeting" || mode === "event") && (
+      {(mode === "meeting" || mode === "event" || mode === "regular") && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
-            {mode === "meeting" ? "会議の所要時間" : "1枠の長さ"}
+            {mode === "meeting" || mode === "regular"
+              ? "会議の所要時間"
+              : "1枠の長さ"}
           </label>
           <div className="flex flex-wrap gap-2">
             {DURATION_OPTIONS.map((option) => (
@@ -307,10 +327,44 @@ export function EventCreateForm() {
             ))}
           </div>
           <p className="text-xs text-muted">
-            {mode === "meeting"
+            {mode === "meeting" || mode === "regular"
               ? "この時間分、全員が空いている枠を探します"
               : "候補日時の時間枠を指定します（例：10:00〜11:00）"}
           </p>
+
+          {/* 開始時刻ずらしオプション */}
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              開始時刻のずらし方
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "none", label: "ずらさない" },
+                { value: "30min", label: "30分ずつ" },
+                { value: "60min", label: "1時間ずつ" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setOffsetMode(option.value as OffsetMode)}
+                  className={`px-4 py-2 rounded-lg border-2 text-sm transition-all ${
+                    offsetMode === option.value
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted">
+              {offsetMode === "none"
+                ? "時間枠は連続して生成されます（例: 10:00-11:00, 11:00-12:00）"
+                : offsetMode === "30min"
+                  ? "30分ずつずらして生成（例: 18:00-21:00, 18:30-21:30, 19:00-22:00）"
+                  : "1時間ずつずらして生成（例: 18:00-21:00, 19:00-22:00, 20:00-23:00）"}
+            </p>
+          </div>
         </div>
       )}
 
@@ -323,6 +377,7 @@ export function EventCreateForm() {
           onChange={setCandidates}
           mode={mode}
           durationMinutes={durationMinutes}
+          offsetMode={offsetMode}
         />
       </div>
 
