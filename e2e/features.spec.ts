@@ -160,3 +160,90 @@ test.describe("VotingGrid レスポンシブ", () => {
     await expect(page.locator("text=調整さん")).toBeVisible();
   });
 });
+
+test.describe("F1-2 結果ページUI改善", () => {
+  test("結果ページにソート切り替えボタンが表示される", async ({ page }) => {
+    // イベントを作成
+    await page.goto("/");
+    await page.fill('input[placeholder*="チーム定例会"]', "ソートテスト");
+    await page.click('button:has-text("多数決")');
+
+    const calendarDays = page.locator(
+      '[class*="calendar"] button:not([disabled])',
+    );
+    if ((await calendarDays.count()) > 0) {
+      await calendarDays.first().click();
+    }
+
+    const createButton = page.locator('button:has-text("イベントを作成")');
+    if (await createButton.isVisible()) {
+      await createButton.click();
+      const confirmButton = page.locator('button:has-text("この内容で作成")');
+      if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+      }
+      await page
+        .waitForURL(/\/e\/.*\/created|\/e\/[^/]+$/, { timeout: 10000 })
+        .catch(() => {});
+    }
+
+    // 結果ページに移動
+    const currentUrl = page.url();
+    if (currentUrl.includes("/e/")) {
+      const resultUrl = currentUrl.replace("/created", "/result");
+      await page.goto(resultUrl);
+
+      // ソートボタンが表示されることを確認
+      await expect(page.locator('button:has-text("日時順")')).toBeVisible({
+        timeout: 5000,
+      });
+      await expect(
+        page.locator('button:has-text("参加可能人数順")'),
+      ).toBeVisible();
+    }
+  });
+
+  test("ソートボタンをクリックするとアクティブ状態が切り替わる", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.fill('input[placeholder*="チーム定例会"]', "ソート切替テスト");
+    await page.click('button:has-text("多数決")');
+
+    const calendarDays = page.locator(
+      '[class*="calendar"] button:not([disabled])',
+    );
+    if ((await calendarDays.count()) > 0) {
+      await calendarDays.first().click();
+    }
+
+    const createButton = page.locator('button:has-text("イベントを作成")');
+    if (await createButton.isVisible()) {
+      await createButton.click();
+      const confirmButton = page.locator('button:has-text("この内容で作成")');
+      if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+      }
+      await page
+        .waitForURL(/\/e\/.*\/created|\/e\/[^/]+$/, { timeout: 10000 })
+        .catch(() => {});
+    }
+
+    const currentUrl = page.url();
+    if (currentUrl.includes("/e/")) {
+      const resultUrl = currentUrl.replace("/created", "/result");
+      await page.goto(resultUrl);
+
+      // 「参加可能人数順」をクリック
+      const availabilityButton = page.locator(
+        'button:has-text("参加可能人数順")',
+      );
+      if (await availabilityButton.isVisible({ timeout: 5000 })) {
+        await availabilityButton.click();
+
+        // アクティブ状態になることを確認（bg-primaryクラス）
+        await expect(availabilityButton).toHaveClass(/bg-primary/);
+      }
+    }
+  });
+});

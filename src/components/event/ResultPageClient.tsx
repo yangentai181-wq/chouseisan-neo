@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { VotingGrid } from "@/components/voting";
+import { useState, useEffect, useMemo } from "react";
+import { VotingGrid, type SortMode } from "@/components/voting";
 import { CalendarLinks } from "@/components/calendar";
 import { ShareButtons } from "@/components/share";
 import { ParticipantActions } from "./ParticipantActions";
@@ -87,6 +87,21 @@ export function ResultPageClient({
   preferenceRankings,
 }: ResultPageClientProps) {
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("date");
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
+    [],
+  );
+
+  // 参加者リスト
+  const participantNames = useMemo(
+    () => votes.map((v) => v.participant_name),
+    [votes],
+  );
+
+  // ベスト候補のID
+  const bestCandidateId = useMemo(() => {
+    return selectedCandidate?.id || null;
+  }, [selectedCandidate]);
 
   // localStorage から初期モードを復元（SSR後のhydrationで必要）
   useEffect(() => {
@@ -278,7 +293,97 @@ export function ResultPageClient({
             </h2>
             <ManageLink eventId={eventId} />
           </div>
-          <VotingGrid candidates={candidates} votes={votes} />
+
+          {/* ソート・フィルターコントロール */}
+          <div className="flex flex-wrap gap-4 mb-4">
+            {/* ソートボタン */}
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm ${isAdminMode ? "text-admin-muted" : "text-muted"}`}
+              >
+                並び順:
+              </span>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSortMode("date")}
+                  className={`px-3 py-1.5 text-sm ${
+                    sortMode === "date"
+                      ? "bg-primary text-white"
+                      : "bg-background hover:bg-border/50"
+                  }`}
+                >
+                  日時順
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortMode("availability")}
+                  className={`px-3 py-1.5 text-sm ${
+                    sortMode === "availability"
+                      ? "bg-primary text-white"
+                      : "bg-background hover:bg-border/50"
+                  }`}
+                >
+                  参加可能人数順
+                </button>
+              </div>
+            </div>
+
+            {/* 参加者フィルター */}
+            {participantNames.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={`text-sm ${isAdminMode ? "text-admin-muted" : "text-muted"}`}
+                >
+                  絞り込み:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {participantNames.map((name) => {
+                    const isSelected = selectedParticipants.includes(name);
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedParticipants((prev) =>
+                              prev.filter((n) => n !== name),
+                            );
+                          } else {
+                            setSelectedParticipants((prev) => [...prev, name]);
+                          }
+                        }}
+                        className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                          isSelected
+                            ? "bg-primary text-white border-primary"
+                            : "bg-background border-border hover:border-primary"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                  {selectedParticipants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedParticipants([])}
+                      className="px-2 py-1 text-xs text-muted hover:text-foreground"
+                    >
+                      クリア
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <VotingGrid
+            candidates={candidates}
+            votes={votes}
+            bestCandidateId={bestCandidateId}
+            sortMode={sortMode}
+            selectedParticipants={selectedParticipants}
+          />
         </div>
 
         {/* 管理者モード時のみ共有機能を表示 */}

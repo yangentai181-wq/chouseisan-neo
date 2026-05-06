@@ -3,12 +3,17 @@
 import { useState, useEffect } from "react";
 import type { Candidate, VoteWithDetails, Availability } from "@/types";
 
+type SortMode = "date" | "availability";
+
 interface VotingGridProps {
   candidates: Candidate[];
   votes: VoteWithDetails[];
   currentVotes?: Record<string, Availability>;
   onCellClick?: (candidateId: string) => void;
   isEditing?: boolean;
+  bestCandidateId?: string | null;
+  selectedParticipants?: string[];
+  sortMode?: SortMode;
 }
 
 // モバイル判定のブレークポイント
@@ -65,24 +70,33 @@ function formatCandidate(c: Candidate): string {
   return dateStr;
 }
 
+interface AvailabilityCounts {
+  preferred: number;
+  available: number;
+  maybe: number;
+  unavailable: number;
+}
+
 function countAvailability(
   candidateId: string,
   votes: VoteWithDetails[],
-): { preferred: number; available: number; maybe: number } {
+): AvailabilityCounts {
   let preferred = 0;
   let available = 0;
   let maybe = 0;
+  let unavailable = 0;
 
   for (const vote of votes) {
     const detail = vote.vote_details.find(
       (d) => d.candidate_id === candidateId,
     );
     if (detail?.availability === "preferred") preferred++;
-    if (detail?.availability === "available") available++;
-    if (detail?.availability === "maybe") maybe++;
+    else if (detail?.availability === "available") available++;
+    else if (detail?.availability === "maybe") maybe++;
+    else unavailable++;
   }
 
-  return { preferred, available, maybe };
+  return { preferred, available, maybe, unavailable };
 }
 
 function AvailabilityBadge({
@@ -119,24 +133,30 @@ function AvailabilityBadge({
   return <span className={baseClass}>{symbols[availability]}</span>;
 }
 
-function CountsSummary({
-  counts,
-}: {
-  counts: { preferred: number; available: number; maybe: number };
-}) {
+function CountsSummary({ counts }: { counts: AvailabilityCounts }) {
   return (
-    <span className="text-sm">
+    <span className="text-sm flex items-center gap-1">
       {counts.preferred > 0 && (
-        <>
-          <span className="text-primary font-medium">◎{counts.preferred}</span>
-          <span className="mx-0.5">/</span>
-        </>
+        <span className="text-primary font-medium">◎{counts.preferred}</span>
       )}
       <span className="text-success font-medium">○{counts.available}</span>
-      <span className="mx-0.5">/</span>
       <span className="text-warning font-medium">△{counts.maybe}</span>
+      <span className="text-muted font-medium">×{counts.unavailable}</span>
     </span>
   );
+}
+
+function BestBadge() {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary text-white">
+      BEST
+    </span>
+  );
+}
+
+// スコア計算（ソート用）
+function calculateScore(counts: AvailabilityCounts): number {
+  return counts.preferred * 3 + counts.available * 2 + counts.maybe * 1;
 }
 
 // モバイル用カードビュー
@@ -146,28 +166,44 @@ function MobileCardView({
   currentVotes,
   onCellClick,
   isEditing,
+  bestCandidateId,
+  selectedParticipants,
 }: VotingGridProps) {
+  // 参加者フィルター適用
+  const filteredVotes =
+    selectedParticipants && selectedParticipants.length > 0
+      ? votes.filter((v) => selectedParticipants.includes(v.participant_name))
+      : votes;
+
   return (
     <div className="space-y-3">
       {candidates.map((candidate) => {
-        const counts = countAvailability(candidate.id, votes);
+        const counts = countAvailability(candidate.id, filteredVotes);
+        const isBest = candidate.id === bestCandidateId;
         return (
           <div
             key={candidate.id}
-            className="bg-card-bg border border-border rounded-xl p-4"
+            className={`rounded-xl p-4 ${
+              isBest
+                ? "bg-primary/10 border-2 border-primary"
+                : "bg-card-bg border border-border"
+            }`}
           >
             {/* 日程と集計 */}
             <div className="flex items-center justify-between mb-3">
-              <span className="font-medium text-sm">
-                {formatCandidate(candidate)}
-              </span>
+              <div className="flex items-center gap-2">
+                {isBest && <BestBadge />}
+                <span className="font-medium text-sm">
+                  {formatCandidate(candidate)}
+                </span>
+              </div>
               <CountsSummary counts={counts} />
             </div>
 
             {/* 参加者の回答 */}
-            {votes.length > 0 && (
+            {filteredVotes.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {votes.map((vote) => {
+                {filteredVotes.map((vote) => {
                   const detail = vote.vote_details.find(
                     (d) => d.candidate_id === candidate.id,
                   );
@@ -212,7 +248,15 @@ function DesktopTableView({
   currentVotes,
   onCellClick,
   isEditing,
+  bestCandidateId,
+  selectedParticipants,
 }: VotingGridProps) {
+  // 参加者フィルター適用
+  const filteredVotes =
+    selectedParticipants && selectedParticipants.length > 0
+      ? votes.filter((v) => selectedParticipants.includes(v.participant_name))
+      : votes;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -221,7 +265,7 @@ function DesktopTableView({
             <th className="p-2 border border-border bg-background text-left min-w-[150px] sticky left-0 z-10">
               日程
             </th>
-            {votes.map((vote) => (
+            {filteredVotes.map((vote) => (
               <th
                 key={vote.id}
                 className="p-2 border border-border bg-background text-center min-w-[60px]"
@@ -241,13 +285,24 @@ function DesktopTableView({
         </thead>
         <tbody>
           {candidates.map((candidate) => {
-            const counts = countAvailability(candidate.id, votes);
+            const counts = countAvailability(candidate.id, filteredVotes);
+            const isBest = candidate.id === bestCandidateId;
             return (
-              <tr key={candidate.id}>
-                <td className="p-2 border border-border text-sm bg-background sticky left-0 z-10">
-                  {formatCandidate(candidate)}
+              <tr
+                key={candidate.id}
+                className={isBest ? "bg-primary/10" : undefined}
+              >
+                <td
+                  className={`p-2 border border-border text-sm sticky left-0 z-10 ${
+                    isBest ? "bg-primary/10" : "bg-background"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isBest && <BestBadge />}
+                    <span>{formatCandidate(candidate)}</span>
+                  </div>
                 </td>
-                {votes.map((vote) => {
+                {filteredVotes.map((vote) => {
                   const detail = vote.vote_details.find(
                     (d) => d.candidate_id === candidate.id,
                   );
@@ -284,6 +339,7 @@ function DesktopTableView({
 
 export function VotingGrid(props: VotingGridProps) {
   const [isMobile, setIsMobile] = useState(false);
+  const { sortMode = "date", votes, selectedParticipants } = props;
 
   useEffect(() => {
     const checkMobile = () => {
@@ -295,9 +351,30 @@ export function VotingGrid(props: VotingGridProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  if (isMobile) {
-    return <MobileCardView {...props} />;
+  // ソート適用
+  const sortedCandidates = [...props.candidates];
+  if (sortMode === "availability") {
+    // フィルター適用後の投票で計算
+    const filteredVotes =
+      selectedParticipants && selectedParticipants.length > 0
+        ? votes.filter((v) => selectedParticipants.includes(v.participant_name))
+        : votes;
+
+    sortedCandidates.sort((a, b) => {
+      const countsA = countAvailability(a.id, filteredVotes);
+      const countsB = countAvailability(b.id, filteredVotes);
+      return calculateScore(countsB) - calculateScore(countsA);
+    });
   }
 
-  return <DesktopTableView {...props} />;
+  const sortedProps = { ...props, candidates: sortedCandidates };
+
+  if (isMobile) {
+    return <MobileCardView {...sortedProps} />;
+  }
+
+  return <DesktopTableView {...sortedProps} />;
 }
+
+// 型エクスポート
+export type { SortMode };
