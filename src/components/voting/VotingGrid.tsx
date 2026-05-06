@@ -17,7 +17,36 @@ const symbols: Record<Availability, string> = {
   unavailable: "×",
 };
 
+// 曜日を表す固定日付（2000-01-02が日曜日）
+const WEEKDAY_DATES = [
+  "2000-01-02", // 日曜
+  "2000-01-03", // 月曜
+  "2000-01-04", // 火曜
+  "2000-01-05", // 水曜
+  "2000-01-06", // 木曜
+  "2000-01-07", // 金曜
+  "2000-01-08", // 土曜
+];
+const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function isWeekdayDate(date: string): boolean {
+  return WEEKDAY_DATES.includes(date);
+}
+
 function formatCandidate(c: Candidate): string {
+  // 定期開催モードの曜日日付かどうかをチェック
+  if (isWeekdayDate(c.date)) {
+    const dayIndex = WEEKDAY_DATES.indexOf(c.date);
+    const weekdayStr = `${WEEKDAYS[dayIndex]}曜`;
+    if (c.start_time && c.end_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜${c.end_time.slice(0, 5)}`;
+    }
+    if (c.start_time) {
+      return `${weekdayStr} ${c.start_time.slice(0, 5)}〜`;
+    }
+    return weekdayStr;
+  }
+
   const date = new Date(c.date);
   const dateStr = date.toLocaleDateString("ja-JP", {
     month: "numeric",
