@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --success: #10b981;
-  --warning: #f59e0b;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --accent: #f97316;
+  --success: #3b82f6;
+  --warning: #f97316;
   --error: #ef4444;
-  --muted: #6b7280;
-  --border: #e5e7eb;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --card-bg: #ffffff;
+
+  /* 管理者モード */
+  --admin-bg: #1e293b;
+  --admin-card-bg: #334155;
+  --admin-border: #475569;
+  --admin-foreground: #f1f5f9;
+  --admin-muted: #94a3b8;
 }
 
 @theme inline {
@@ -17,19 +26,26 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-error: var(--error);
   --color-muted: var(--muted);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card-bg: var(--card-bg);
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-card-bg: var(--admin-card-bg);
+  --color-admin-border: var(--admin-border);
+  --color-admin-foreground: var(--admin-foreground);
+  --color-admin-muted: var(--admin-muted);
+  --font-sans: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jetbrains), "JetBrains Mono", monospace;
 }
 
 /* 投票セルのスタイル */
@@ -47,4 +63,30 @@ body {
 
 .vote-cell[data-availability="unavailable"] {
   @apply bg-gray-200 text-gray-500;
+}
+
+/* 候補追加パネルのスライドインアニメーション */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slideInFromTop 0.3s ease-out;
+}
+
+/* iOS Safe Area対応 */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* アクティブ状態のスケール */
+.active\:scale-98:active {
+  transform: scale(0.98);
 }
