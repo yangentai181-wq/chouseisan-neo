@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Textarea } from "@/components/ui";
 import { CandidateDatePicker } from "./CandidateDatePicker";
 import { ModeSelector } from "./ModeSelector";
+import { TemplateSelector, SaveTemplateModal } from "@/components/template";
 import type { CreateEventInput } from "@/lib/validation";
 import type { EventMode } from "@/types";
 
@@ -27,10 +28,28 @@ export function EventCreateForm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<EventMode>("event");
+  const [isRegular, setIsRegular] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [candidates, setCandidates] = useState<CandidateDate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+
+  const handleTemplateSelect = (data: {
+    title: string;
+    description: string;
+    mode: EventMode;
+    duration_minutes: number | null;
+    candidates: CandidateDate[];
+  }) => {
+    setTitle(data.title);
+    setDescription(data.description);
+    setMode(data.mode);
+    if (data.duration_minutes) {
+      setDurationMinutes(data.duration_minutes);
+    }
+    setCandidates(data.candidates);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +103,10 @@ export function EventCreateForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="flex justify-end">
+        <TemplateSelector onSelect={handleTemplateSelect} />
+      </div>
+
       {error && (
         <div className="bg-red-50 border border-error text-error px-4 py-3 rounded-lg">
           {error}
@@ -108,7 +131,12 @@ export function EventCreateForm() {
         maxLength={1000}
       />
 
-      <ModeSelector value={mode} onChange={setMode} />
+      <ModeSelector
+        value={mode}
+        onChange={setMode}
+        isRegular={isRegular}
+        onRegularChange={setIsRegular}
+      />
 
       {mode === "meeting" && (
         <div className="space-y-2">
@@ -149,9 +177,34 @@ export function EventCreateForm() {
         />
       </div>
 
-      <Button type="submit" loading={loading} className="w-full" size="lg">
-        イベントを作成
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button type="submit" loading={loading} className="w-full" size="lg">
+          イベントを作成
+        </Button>
+
+        {candidates.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowSaveTemplateModal(true)}
+            className="w-full"
+          >
+            テンプレートとして保存
+          </Button>
+        )}
+      </div>
+
+      <SaveTemplateModal
+        isOpen={showSaveTemplateModal}
+        onClose={() => setShowSaveTemplateModal(false)}
+        eventData={{
+          title,
+          description,
+          mode,
+          duration_minutes: mode === "meeting" ? durationMinutes : null,
+          candidates,
+        }}
+      />
     </form>
   );
 }

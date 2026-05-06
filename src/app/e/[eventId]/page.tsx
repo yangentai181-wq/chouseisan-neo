@@ -57,10 +57,10 @@ export default async function EventPage({ params }: EventPageProps) {
 
   const modeLabel =
     event.mode === "meeting"
-      ? "全員集合モード"
+      ? "全員参加"
       : event.mode === "regular"
-        ? "定例モード"
-        : "イベントモード";
+        ? "全員参加（定期開催）"
+        : "多数決";
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-4">

@@ -11,6 +11,7 @@ interface VotingGridProps {
 }
 
 const symbols: Record<Availability, string> = {
+  preferred: "◎",
   available: "○",
   maybe: "△",
   unavailable: "×",
@@ -35,7 +36,8 @@ function formatCandidate(c: Candidate): string {
 function countAvailability(
   candidateId: string,
   votes: VoteWithDetails[],
-): { available: number; maybe: number } {
+): { preferred: number; available: number; maybe: number } {
+  let preferred = 0;
   let available = 0;
   let maybe = 0;
 
@@ -43,11 +45,12 @@ function countAvailability(
     const detail = vote.vote_details.find(
       (d) => d.candidate_id === candidateId,
     );
-    if (detail?.availability === "available") available++;
-    if (detail?.availability === "maybe") maybe++;
+    if (detail?.availability === "preferred") preferred++;
+    else if (detail?.availability === "available") available++;
+    else if (detail?.availability === "maybe") maybe++;
   }
 
-  return { available, maybe };
+  return { preferred, available, maybe };
 }
 
 export function VotingGrid({
@@ -103,11 +106,13 @@ export function VotingGrid({
                     >
                       <span
                         className={`inline-flex items-center justify-center w-8 h-8 rounded ${
-                          availability === "available"
-                            ? "bg-success text-white"
-                            : availability === "maybe"
-                              ? "bg-warning text-white"
-                              : "bg-gray-200 text-gray-500"
+                          availability === "preferred"
+                            ? "bg-primary text-white"
+                            : availability === "available"
+                              ? "bg-success text-white"
+                              : availability === "maybe"
+                                ? "bg-warning text-white"
+                                : "bg-gray-200 text-gray-500"
                         }`}
                       >
                         {symbols[availability]}
@@ -121,11 +126,13 @@ export function VotingGrid({
                       type="button"
                       onClick={() => onCellClick?.(candidate.id)}
                       className={`inline-flex items-center justify-center w-8 h-8 rounded cursor-pointer transition-colors ${
-                        currentVotes[candidate.id] === "available"
-                          ? "bg-success text-white"
-                          : currentVotes[candidate.id] === "maybe"
-                            ? "bg-warning text-white"
-                            : "bg-gray-200 text-gray-500"
+                        currentVotes[candidate.id] === "preferred"
+                          ? "bg-primary text-white"
+                          : currentVotes[candidate.id] === "available"
+                            ? "bg-success text-white"
+                            : currentVotes[candidate.id] === "maybe"
+                              ? "bg-warning text-white"
+                              : "bg-gray-200 text-gray-500"
                       }`}
                     >
                       {symbols[currentVotes[candidate.id] || "unavailable"]}
@@ -133,6 +140,14 @@ export function VotingGrid({
                   </td>
                 )}
                 <td className="p-2 border border-border text-center text-sm">
+                  {counts.preferred > 0 && (
+                    <>
+                      <span className="text-primary font-medium">
+                        ◎{counts.preferred}
+                      </span>
+                      <span className="mx-1">/</span>
+                    </>
+                  )}
                   <span className="text-success font-medium">
                     ○{counts.available}
                   </span>

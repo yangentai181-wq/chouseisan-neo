@@ -43,8 +43,9 @@ function findBestCandidate(
       const detail = vote.vote_details.find(
         (d) => d.candidate_id === candidate.id,
       );
-      if (detail?.availability === "available") score += 2;
-      if (detail?.availability === "maybe") score += 1;
+      if (detail?.availability === "preferred") score += 3;
+      else if (detail?.availability === "available") score += 2;
+      else if (detail?.availability === "maybe") score += 1;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -212,10 +213,10 @@ export default async function ResultPage({ params }: ResultPageProps) {
           )}
           <p className="text-sm text-muted mt-1">
             {mode === "meeting"
-              ? "全員集合モード"
+              ? "全員参加"
               : mode === "regular"
-                ? "定例モード"
-                : "イベントモード"}
+                ? "全員参加（定期開催）"
+                : "多数決"}
           </p>
         </header>
 

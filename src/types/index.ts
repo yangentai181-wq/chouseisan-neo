@@ -8,6 +8,7 @@ export interface Event {
   description: string | null;
   mode: EventMode;
   duration_minutes: number | null;
+  response_deadline: string | null; // ISO date string (YYYY-MM-DD)
   status: "open" | "finalized";
   finalized_candidate_id: string | null;
   created_at: string;
@@ -30,7 +31,12 @@ export interface Vote {
   participant_token: string;
 }
 
-export type Availability = "available" | "maybe" | "unavailable";
+// 4段階評価（定期開催モード対応）
+// preferred: ◎ 希望（ぜひこの時間がいい）
+// available: ○ OK（問題なく参加できる）
+// maybe: △ 可能（できれば避けたいが可）
+// unavailable: × 不可（参加できない）
+export type Availability = "preferred" | "available" | "maybe" | "unavailable";
 
 export interface VoteDetail {
   id: string;
@@ -86,6 +92,26 @@ export interface ParticipantGroup {
   id: string;
   name: string; // グループ名 (例: "開発チーム")
   members: string[]; // メンバー名一覧
+  created_at: string;
+  updated_at: string;
+}
+
+// テンプレート (F2-3)
+export interface CandidatePattern {
+  day_type: "weekday" | "relative";
+  day_value: number; // weekday: 0-6 (日-土), relative: 日数（1=明日, 7=1週間後）
+  start_time: string | null; // HH:mm format
+  end_time: string | null;
+}
+
+export interface EventTemplate {
+  id: string;
+  name: string; // テンプレート名
+  title: string; // イベントタイトル
+  description: string | null;
+  mode: EventMode;
+  duration_minutes: number | null; // meetingモード用
+  candidate_patterns: CandidatePattern[];
   created_at: string;
   updated_at: string;
 }
